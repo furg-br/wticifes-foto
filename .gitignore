@@ -24,3 +24,11 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# artefatos temporários de exploração visual
+/artifacts/.imagegen-venv/
+/artifacts/lettering-concepts/*
+!/artifacts/lettering-concepts/comparativo-5-versoes.jpg
+!/artifacts/lettering-concepts/overlay-v5.png
+!/artifacts/lettering-concepts/preview-v5.jpg
+/scripts/render-lettering-concepts.mjs

@@ -11,9 +11,12 @@ export const BRAND = {
   red: "#C90216",
   yellow: "#FFB303",
   green: "#679157",
-  bandBackground: "#171717",
   phrase: "Eu fui, tchê!",
 } as const;
 
 export const OFFICIAL_LOGO_SHA256 =
   "70a722d1993806f761948ab12db508c72f0149ad78c307d09953583c6d1390e6";
+
+/** Lettering artístico aprovado (versão 5), mantido como ativo estático e imutável. */
+export const OFFICIAL_PHRASE_SHA256 =
+  "401db7615e1ae38f362d96ddbd762ecaf9e4f2056b655dd8630b20cb59d096e5";

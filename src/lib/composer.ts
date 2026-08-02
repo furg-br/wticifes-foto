@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { parse as parseFont, type Font } from "opentype.js";
 import sharp from "sharp";
 import { AppError } from "./app-error";
-import { BRAND, OFFICIAL_LOGO_SHA256 } from "./brand";
+import { OFFICIAL_LOGO_SHA256, OFFICIAL_PHRASE_SHA256 } from "./brand";
 import { INPUT_LIMITS, OUTPUT } from "./constants";
 
 sharp.cache({ files: 0, items: 32, memory: 64 });
@@ -18,8 +17,8 @@ export interface Box {
 }
 
 export interface CompositionLayout {
-  mode: "horizontal" | "stacked";
-  bandHeight: number;
+  mode: "overlay";
+  backdrop: Box;
   logo: Box;
   phrase: Box;
 }
@@ -30,69 +29,52 @@ export interface PersonalizedImage {
   height: number;
   photoWidth: number;
   photoHeight: number;
-  bandHeight: number;
   layout: CompositionLayout["mode"];
 }
 
-const fontPath = path.join(
-  /*turbopackIgnore: true*/ process.cwd(),
-  "public",
-  "fonts",
-  "Lato-Black.ttf",
-);
-const FONT_SHA256 = "808c62839c62dbce7de689af7603666fc7f8b81e0df537d8a5212c87580d4337";
-
 let logoPromise: Promise<Buffer> | undefined;
-let fontPromise: Promise<Font> | undefined;
+let phrasePromise: Promise<Buffer> | undefined;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Math.round(value)));
 }
 
 export function calculateLayout(photoWidth: number, photoHeight: number): CompositionLayout {
-  const aspectRatio = photoWidth / photoHeight;
-  const horizontal = aspectRatio >= 1.25 && photoWidth >= 800;
-  const margin = Math.max(8, Math.min(clamp(photoWidth * 0.045, 12, 88), Math.floor(photoWidth * 0.1)));
-
-  if (horizontal) {
-    const bandHeight = clamp(photoWidth * 0.18, 220, 420);
-    const innerWidth = photoWidth - margin * 2;
-    const logoWidth = Math.round(innerWidth * 0.43);
-    return {
-      mode: "horizontal",
-      bandHeight,
-      logo: {
-        left: margin,
-        top: margin,
-        width: logoWidth,
-        height: bandHeight - margin * 2,
-      },
-      phrase: {
-        left: margin + logoWidth + margin,
-        top: margin,
-        width: innerWidth - logoWidth - margin,
-        height: bandHeight - margin * 2,
-      },
-    };
-  }
-
-  const bandHeight = clamp(photoWidth * 0.44, 180, 620);
+  const margin = Math.max(
+    6,
+    Math.min(clamp(photoWidth * 0.025, 8, 56), Math.floor(photoWidth * 0.08)),
+  );
+  const backdropPadding = Math.max(4, Math.round(margin * 0.55));
+  const desiredHeight = clamp(Math.min(photoWidth * 0.28, photoHeight * 0.28), 48, 560);
+  const contentHeight = Math.max(24, Math.min(desiredHeight, photoHeight - margin * 2));
+  const backdropHeight = Math.min(photoHeight, contentHeight + backdropPadding * 2);
+  const backdropTop = Math.max(0, photoHeight - margin - backdropHeight);
+  const contentTop = backdropTop + backdropPadding;
+  const gap = margin;
   const innerWidth = photoWidth - margin * 2;
-  const logoHeight = Math.round((bandHeight - margin * 3) * 0.48);
+  const availableWidth = innerWidth - gap;
+  const logoWidth = Math.round(availableWidth * 0.48);
+  const backdropInset = Math.max(0, Math.round(margin * 0.45));
+
   return {
-    mode: "stacked",
-    bandHeight,
+    mode: "overlay",
+    backdrop: {
+      left: backdropInset,
+      top: backdropTop,
+      width: photoWidth - backdropInset * 2,
+      height: backdropHeight,
+    },
     logo: {
       left: margin,
-      top: margin,
-      width: innerWidth,
-      height: logoHeight,
+      top: contentTop,
+      width: logoWidth,
+      height: contentHeight,
     },
     phrase: {
-      left: margin,
-      top: margin * 2 + logoHeight,
-      width: innerWidth,
-      height: bandHeight - logoHeight - margin * 3,
+      left: margin + logoWidth + gap,
+      top: contentTop,
+      width: availableWidth - logoWidth,
+      height: contentHeight,
     },
   };
 }
@@ -114,19 +96,21 @@ async function loadOfficialLogo(): Promise<Buffer> {
   return logoPromise;
 }
 
-async function loadFont(): Promise<Font> {
-  fontPromise ??= readFile(fontPath).then((data) => {
+async function loadApprovedPhrase(): Promise<Buffer> {
+  phrasePromise ??= readFile(
+    path.join(process.cwd(), "public", "wticifes2026-phrase-brush.png"),
+  ).then((data) => {
     const hash = createHash("sha256").update(data).digest("hex");
-    if (hash !== FONT_SHA256) {
-      throw new AppError("INVALID_FONT_ASSET", 500, "O arquivo local da fonte Lato está inválido.");
+    if (hash !== OFFICIAL_PHRASE_SHA256) {
+      throw new AppError(
+        "INVALID_PHRASE_ASSET",
+        500,
+        "O lettering aprovado está inválido.",
+      );
     }
-    const font = parseFont(Uint8Array.from(data).buffer);
-    if (![..."Eu fui,tchê!"].every((character) => character === " " || font.hasChar(character))) {
-      throw new AppError("INVALID_FONT_ASSET", 500, "A fonte Lato não contém todos os caracteres necessários.");
-    }
-    return font;
+    return data;
   });
-  return fontPromise;
+  return phrasePromise;
 }
 
 function detectFormat(data: Buffer): "jpeg" | "png" | "webp" | undefined {
@@ -223,51 +207,35 @@ async function renderLogo(box: Box): Promise<{ data: Buffer; width: number; heig
 }
 
 async function renderPhrase(box: Box): Promise<{ data: Buffer; width: number; height: number }> {
-  const font = await loadFont();
-  const segments = [
-    { text: "Eu", color: BRAND.red },
-    { text: " fui,", color: BRAND.yellow },
-    { text: " tchê!", color: BRAND.green },
-  ] as const;
-  const renderOptions = { kerning: true } as const;
-  const widthAtOnePixel = segments.reduce(
-    (total, segment) => total + font.getAdvanceWidth(segment.text, 1, renderOptions),
-    0,
-  );
-  const heightAtOnePixel = (font.ascender - font.descender) / font.unitsPerEm;
-  const fontSize = Math.max(
-    1,
-    Math.min(box.width / widthAtOnePixel, box.height / heightAtOnePixel) * 0.9,
-  );
-  const lineHeight = heightAtOnePixel * fontSize;
-  const totalWidth = widthAtOnePixel * fontSize;
-  let x = Math.max(0, (box.width - totalWidth) / 2);
-  const baseline = Math.max(
-    (font.ascender / font.unitsPerEm) * fontSize,
-    (box.height - lineHeight) / 2 + (font.ascender / font.unitsPerEm) * fontSize,
-  );
-  const paths = segments.map((segment) => {
-    const pathData = font.getPath(segment.text, x, baseline, fontSize, renderOptions).toPathData(3);
-    x += font.getAdvanceWidth(segment.text, fontSize, renderOptions);
-    return `<path fill="${segment.color}" d="${pathData}"/>`;
-  });
-  const svg = Buffer.from(
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${box.width}" height="${box.height}" viewBox="0 0 ${box.width} ${box.height}">${paths.join("")}</svg>`,
-    "utf8",
-  );
-
-  const rendered = await sharp(svg)
+  const phrase = await loadApprovedPhrase();
+  const rendered = await sharp(phrase)
+    .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 8 })
+    .resize({
+      width: box.width,
+      height: box.height,
+      fit: "inside",
+      withoutEnlargement: true,
+      kernel: sharp.kernel.lanczos3,
+    })
     .png({ compressionLevel: 6, adaptiveFiltering: false })
     .toBuffer({ resolveWithObject: true });
 
   return { data: rendered.data, width: rendered.info.width, height: rendered.info.height };
 }
 
-function centeredPosition(box: Box, width: number, height: number, photoHeight: number) {
+function centeredPosition(box: Box, width: number, height: number) {
   return {
     left: box.left + Math.max(0, Math.floor((box.width - width) / 2)),
-    top: photoHeight + box.top + Math.max(0, Math.floor((box.height - height) / 2)),
+    top: box.top + Math.max(0, Math.floor((box.height - height) / 2)),
   };
+}
+
+function renderTranslucentBackdrop(box: Box): Buffer {
+  const radius = Math.max(8, Math.round(box.height * 0.16));
+  return Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${box.width}" height="${box.height}" viewBox="0 0 ${box.width} ${box.height}"><rect x="1" y="1" width="${Math.max(1, box.width - 2)}" height="${Math.max(1, box.height - 2)}" rx="${radius}" fill="#ffffff" fill-opacity="0.68" stroke="#ffffff" stroke-opacity="0.38" stroke-width="2"/></svg>`,
+    "utf8",
+  );
 }
 
 export async function personalizePhoto(data: Buffer, mimeType: string): Promise<PersonalizedImage> {
@@ -285,22 +253,16 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
       throw new AppError("PHRASE_RENDER_FAILED", 500, "Não foi possível renderizar a frase.", { cause });
     }),
   ]);
-  const logoPosition = centeredPosition(layout.logo, logo.width, logo.height, photoHeight);
-  const phrasePosition = centeredPosition(layout.phrase, phrase.width, phrase.height, photoHeight);
-  const height = photoHeight + layout.bandHeight;
+  const logoPosition = centeredPosition(layout.logo, logo.width, logo.height);
+  const phrasePosition = centeredPosition(layout.phrase, phrase.width, phrase.height);
+  const backdrop = renderTranslucentBackdrop(layout.backdrop);
+  const height = photoHeight;
 
   let output: Buffer;
   try {
-    output = await sharp({
-      create: {
-        width: photoWidth,
-        height,
-        channels: 3,
-        background: BRAND.bandBackground,
-      },
-    })
+    output = await sharp(photo.data)
       .composite([
-        { input: photo.data, left: 0, top: 0 },
+        { input: backdrop, left: layout.backdrop.left, top: layout.backdrop.top },
         { input: logo.data, ...logoPosition },
         { input: phrase.data, ...phrasePosition },
       ])
@@ -322,7 +284,6 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
   let finalWidth = photoWidth;
   let finalHeight = height;
   let finalPhotoHeight = photoHeight;
-  let finalBandHeight = layout.bandHeight;
   while (output.byteLength > OUTPUT.functionSafeBytes && finalWidth > 640) {
     const scale = Math.max(
       0.72,
@@ -345,12 +306,10 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
         .catch((cause: unknown) => {
           throw new AppError("OUTPUT_RESIZE_FAILED", 500, "Não foi possível ajustar a saída JPEG.", { cause });
         });
-    const appliedScale = resized.info.width / finalWidth;
     output = resized.data;
     finalWidth = resized.info.width;
     finalHeight = resized.info.height;
-    finalPhotoHeight = Math.round(finalPhotoHeight * appliedScale);
-    finalBandHeight = finalHeight - finalPhotoHeight;
+    finalPhotoHeight = resized.info.height;
   }
 
   return {
@@ -359,7 +318,6 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
     height: finalHeight,
     photoWidth: finalWidth,
     photoHeight: finalPhotoHeight,
-    bandHeight: finalBandHeight,
     layout: layout.mode,
   };
 }

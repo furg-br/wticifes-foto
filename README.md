@@ -1,6 +1,6 @@
 # WTICIFES 2026 — Eu fui, tchê!
 
-Aplicação web standalone, pronta para Vercel, que recebe uma fotografia e acrescenta de forma determinística o logo oficial do WTICIFES 2026 e a frase **“Eu fui, tchê!”**. A composição usa somente Sharp. Não há integração com ChatGPT, geração de imagens por IA nem aprovação automática.
+Aplicação web standalone, pronta para Vercel, que recebe uma fotografia e acrescenta de forma determinística o logo oficial do WTICIFES 2026 e a frase **“Eu fui, tchê!”**. Cada personalização usa somente Sharp e ativos estáticos aprovados, sem chamada a IA. Não há integração com ChatGPT nem aprovação automática.
 
 ## Arquitetura
 
@@ -18,7 +18,7 @@ flowchart LR
 
 A Vercel limita corpos de Functions a 4,5 MB. Para aceitar 12 MB sem expor credenciais, o navegador usa o fluxo oficial de Client Upload do Vercel Blob. A entrada fica no store privado pelo menor tempo possível: o servidor valida a reserva, lê no máximo 12 MB e apaga o objeto antes de executar o Sharp. Uploads abandonados tornam-se elegíveis após uma hora e são removidos no ciclo horário seguinte. Somente o JPEG final é retido.
 
-O compositor preserva toda a foto no topo, respeita EXIF, nunca recorta nem amplia, reduz apenas por segurança/desempenho, limita a área fotográfica a 2400 × 4000, acrescenta a faixa fora da foto, gera JPEG sRGB qualidade 90 e remove metadados. Caso um resultado ultrapasse o limite seguro de resposta da Function, ele é reduzido deterministicamente, sem distorção e ainda em qualidade 90.
+O compositor preserva toda a foto, respeita EXIF, nunca recorta nem amplia, reduz apenas por segurança/desempenho e limita a área fotográfica a 2400 × 4000. O logo fica à esquerda e o lettering artístico à direita, sobre uma tarja branca translúcida dentro da própria foto. A saída é JPEG sRGB qualidade 90 sem metadados. Caso um resultado ultrapasse o limite seguro de resposta da Function, ele é reduzido deterministicamente, sem distorção e ainda em qualidade 90.
 
 ## Estados e publicação
 
@@ -199,7 +199,7 @@ npm audit --omit=dev
 
 Roteiro manual mínimo:
 
-1. Envie JPG, PNG e WebP horizontal, vertical e quadrado; valide orientação, foto inteira, faixa e download.
+1. Envie JPG, PNG e WebP horizontal, vertical e quadrado; valide orientação, foto inteira, sobreposição translúcida e download.
 2. Tente SVG renomeado, animação, arquivo >12 MB e imagem acima de 40 MP.
 3. Confirme que personalizar não coloca a imagem no feed.
 4. Marque consentimento; confirme `pending_review` e ausência no feed.

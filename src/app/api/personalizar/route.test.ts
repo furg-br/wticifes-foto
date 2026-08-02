@@ -94,7 +94,7 @@ beforeEach(() => {
   mocks.assertParticipantTotal.mockResolvedValue(undefined);
   mocks.personalizePhoto.mockResolvedValue({
     data: Buffer.from("jpeg"), width: 1000, height: 1200, photoWidth: 1000,
-    photoHeight: 900, bandHeight: 300, layout: "stacked",
+    photoHeight: 900, layout: "overlay",
   });
   mocks.storePersonalizedImage.mockResolvedValue({
     pathname: "personalizadas/2026-08-02/uuid.jpg",

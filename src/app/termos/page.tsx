@@ -15,7 +15,7 @@ export default function Termos() {
         </p>
         <p>
           O serviço apenas redimensiona a fotografia quando necessário e adiciona a
-          faixa oficial. A imagem resultante é disponibilizada temporariamente e pode
+          identidade oficial sobre uma tarja branca translúcida. A imagem resultante é disponibilizada temporariamente e pode
           deixar de estar acessível após o prazo de retenção.
         </p>
         <p>

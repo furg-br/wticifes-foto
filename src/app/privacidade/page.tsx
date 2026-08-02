@@ -18,8 +18,9 @@ export default function Privacidade() {
         <p>
           A foto de entrada passa por um espaço privado transitório da Vercel para superar o limite de
           upload das Functions e é apagada assim que o servidor a lê, antes da composição. Uploads
-          abandonados são eliminados automaticamente. Sharp aplica orientação, limites e a faixa oficial;
-          não há geração de imagem por inteligência artificial. EXIF, GPS e outros metadados são removidos.
+          abandonados são eliminados automaticamente. Sharp aplica orientação, limites e a identidade
+          visual estática aprovada; nenhuma fotografia é enviada a um serviço de inteligência artificial.
+          EXIF, GPS e outros metadados são removidos.
         </p>
         <h2>Consentimento e revisão</h2>
         <p>

@@ -9,13 +9,18 @@ function hash(data: Buffer): string {
 }
 
 describe.sequential("composição determinística", () => {
-  it("escolhe layout horizontal para paisagem e empilhado para retrato/quadrado", () => {
-    expect(calculateLayout(1600, 800).mode).toBe("horizontal");
-    expect(calculateLayout(800, 1600).mode).toBe("stacked");
-    expect(calculateLayout(1200, 1200).mode).toBe("stacked");
+  it("mantém logo à esquerda e lettering à direita em qualquer proporção", () => {
+    const sizes = [[1600, 800], [800, 1600], [1200, 1200]] as const;
+    for (const [width, height] of sizes) {
+      const layout = calculateLayout(width, height);
+      expect(layout.mode).toBe("overlay");
+      expect(layout.logo.left + layout.logo.width).toBeLessThan(layout.phrase.left);
+      expect(layout.backdrop.top).toBeGreaterThanOrEqual(0);
+      expect(layout.backdrop.top + layout.backdrop.height).toBeLessThanOrEqual(height);
+    }
   });
 
-  it("preserva uma foto pequena, acrescenta a faixa e remove metadados sensíveis", async () => {
+  it("preserva uma foto pequena, sobrepõe a arte e remove metadados sensíveis", async () => {
     const input = await sharp({
       create: { width: 320, height: 500, channels: 3, background: "#8844CC" },
     })
@@ -31,7 +36,8 @@ describe.sequential("composição determinística", () => {
     expect(first.photoWidth).toBe(320);
     expect(first.photoHeight).toBe(500);
     expect(first.width).toBe(320);
-    expect(first.height).toBe(500 + first.bandHeight);
+    expect(first.height).toBe(500);
+    expect(first.layout).toBe("overlay");
     expect(metadata).toMatchObject({ format: "jpeg", width: 320, height: first.height, space: "srgb" });
     expect(metadata.hasProfile).toBe(true);
     expect(metadata.exif).toBeUndefined();
@@ -64,7 +70,7 @@ describe.sequential("composição determinística", () => {
     const large = await personalizePhoto(largeInput, "image/png");
     expect(large.photoWidth).toBe(2400);
     expect(large.photoHeight).toBe(800);
-    expect(large.layout).toBe("horizontal");
+    expect(large.layout).toBe("overlay");
   });
 
   it("rejeita conteúdo disfarçado e MIME incompatível", async () => {
