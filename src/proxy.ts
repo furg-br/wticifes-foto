@@ -34,5 +34,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|fonts/|wticifes2026-logo.png|openapi.yaml).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|fonts/|wticifes2026-logo.png|wticifes2026-favicon.png|openapi.yaml).*)"],
 };

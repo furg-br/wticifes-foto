@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   title: "Eu fui, tchê! — WTICIFES 2026",
   description:
     "Aplicação oficial do WTICIFES 2026 para personalizar sua fotografia com segurança.",
+  icons: {
+    icon: [{ url: "/wticifes2026-favicon.png", type: "image/png" }],
+    shortcut: ["/wticifes2026-favicon.png"],
+  },
   robots: { index: true, follow: true },
 };
 
