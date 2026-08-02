@@ -11,8 +11,9 @@ export default function Privacidade() {
         <h2>Dados tratados</h2>
         <p>
           A aplicação recebe uma fotografia e dados técnicos mínimos para segurança. Não exige nome,
-          e-mail ou cadastro. Se futuramente for informado um token de inscrição, guardamos apenas um
-          HMAC irreversível para aplicar limites; endereços de rede também são pseudonimizados antes do uso.
+          e-mail ou cadastro. O navegador mantém um identificador aleatório anônimo para que a mesma
+          pessoa possa recuperar os controles ao reenviar uma foto; o servidor guarda somente seu HMAC
+          irreversível. Endereços de rede também são pseudonimizados antes do uso.
         </p>
         <h2>Personalização privada</h2>
         <p>

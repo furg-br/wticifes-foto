@@ -49,6 +49,26 @@ export async function findActiveByContentHash(contentHash: string): Promise<Imag
   });
 }
 
+export async function claimUnidentifiedPrivateImage(
+  imageId: string,
+  participantHash: string,
+): Promise<ImageRecord | undefined> {
+  const [claimed] = await getDatabase()
+    .update(images)
+    .set({ participantKeyHash: participantHash })
+    .where(
+      and(
+        eq(images.id, imageId),
+        eq(images.status, "private"),
+        isNull(images.participantKeyHash),
+        isNull(images.consentedAt),
+        isNull(images.deletedAt),
+      ),
+    )
+    .returning();
+  return claimed;
+}
+
 export async function findByRequestKey(requestKey: string): Promise<ImageRecord | undefined> {
   return getDatabase().query.images.findFirst({ where: eq(images.requestKeyHash, requestKey) });
 }

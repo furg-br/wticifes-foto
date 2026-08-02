@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   storePersonalizedImage: vi.fn(),
   personalizePhoto: vi.fn(),
   createPrivateImage: vi.fn(),
+  claimUnidentifiedPrivateImage: vi.fn(),
   findByRequestKey: vi.fn(),
   findActiveByContentHash: vi.fn(),
   findImageById: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("@/lib/storage", () => ({
 }));
 vi.mock("@/lib/image-repository", () => ({
   createPrivateImage: mocks.createPrivateImage,
+  claimUnidentifiedPrivateImage: mocks.claimUnidentifiedPrivateImage,
   findByRequestKey: mocks.findByRequestKey,
   findActiveByContentHash: mocks.findActiveByContentHash,
   findImageById: mocks.findImageById,
@@ -55,7 +57,7 @@ vi.mock("@/lib/rate-limit", () => ({
 
 import { POST } from "./route";
 import { AppError } from "@/lib/app-error";
-import { requestKeyHash } from "@/lib/crypto-tokens";
+import { participantKeyHash, requestKeyHash } from "@/lib/crypto-tokens";
 
 const id = "019fc3b2-061d-7ea0-b4de-4738900bd89f";
 const body = {
@@ -92,6 +94,7 @@ beforeEach(() => {
   mocks.isParticipantBlocked.mockResolvedValue(false);
   mocks.countParticipantImages.mockResolvedValue(0);
   mocks.assertParticipantTotal.mockResolvedValue(undefined);
+  mocks.claimUnidentifiedPrivateImage.mockResolvedValue(undefined);
   mocks.personalizePhoto.mockResolvedValue({
     data: Buffer.from("jpeg"), width: 1000, height: 1200, photoWidth: 1000,
     photoHeight: 900, layout: "overlay",
@@ -135,7 +138,11 @@ describe("POST /api/personalizar standalone", () => {
     const response = await POST(request(body));
     const json = (await response.json()) as Record<string, unknown>;
     expect(response.status).toBe(200);
-    expect(json).toMatchObject({ success: true, expires_at: "2026-08-03T12:00:00.000Z" });
+    expect(json).toMatchObject({
+      success: true,
+      reused: false,
+      expires_at: "2026-08-03T12:00:00.000Z",
+    });
     expect(json.result_url).toMatch(/^https:\/\/foto\.example\.org\/api\/imagem\//);
     expect(mocks.assertUploadReservation).toHaveBeenCalledOnce();
     expect(mocks.readTransientUpload).toHaveBeenCalledWith(body.upload_path);
@@ -183,6 +190,54 @@ describe("POST /api/personalizar standalone", () => {
     const response = await POST(request(body));
     expect(response.status).toBe(409);
     expect(mocks.personalizePhoto).not.toHaveBeenCalled();
+  });
+
+  it("devolve imagem e controles ao mesmo participante anônimo", async () => {
+    const participantToken = "participante-seguro-123";
+    mocks.findActiveByContentHash.mockResolvedValueOnce({
+      id: "119fc3b2-061d-7ea0-b4de-4738900bd89f",
+      status: "private",
+      deletedAt: null,
+      requestKeyHash: "outro",
+      participantKeyHash: participantKeyHash(participantToken),
+      consentedAt: null,
+      tokenVersion: 1,
+      expiresAt: new Date("2026-08-03T12:00:00.000Z"),
+    });
+    const response = await POST(request({ ...body, participant_token: participantToken }));
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(response.status).toBe(200);
+    expect(json).toMatchObject({ success: true, reused: true });
+    expect(json.consent_token).toEqual(expect.any(String));
+    expect(json.revocation_token).toEqual(expect.any(String));
+    expect(mocks.personalizePhoto).not.toHaveBeenCalled();
+  });
+
+  it("vincula imagem privada antiga sem consentimento ao navegador que reapresenta o arquivo", async () => {
+    const participantToken = "participante-seguro-123";
+    const participantHash = participantKeyHash(participantToken);
+    const legacy = {
+      id: "119fc3b2-061d-7ea0-b4de-4738900bd89f",
+      status: "private",
+      deletedAt: null,
+      requestKeyHash: "outro",
+      participantKeyHash: null,
+      consentedAt: null,
+      tokenVersion: 1,
+      expiresAt: new Date("2026-08-03T12:00:00.000Z"),
+    };
+    mocks.findActiveByContentHash.mockResolvedValueOnce(legacy);
+    mocks.claimUnidentifiedPrivateImage.mockResolvedValueOnce({
+      ...legacy,
+      participantKeyHash: participantHash,
+    });
+
+    const response = await POST(request({ ...body, participant_token: participantToken }));
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(response.status).toBe(200);
+    expect(json).toMatchObject({ success: true, reused: true });
+    expect(mocks.claimUnidentifiedPrivateImage).toHaveBeenCalledWith(legacy.id, participantHash);
+    expect(mocks.rememberIdempotency).toHaveBeenCalledWith(expect.any(String), legacy.id);
   });
 
   it("retorna 409 quando o lock distribuído indica processamento concorrente", async () => {

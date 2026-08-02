@@ -2,6 +2,7 @@
 
 import { upload } from "@vercel/blob/client";
 import { type FormEvent, useState } from "react";
+import { getOrCreateParticipantToken } from "@/lib/participant-identity";
 
 interface PersonalizationResult {
   success: true;
@@ -10,6 +11,7 @@ interface PersonalizationResult {
   consent_token: string;
   revocation_token: string;
   expires_at: string;
+  reused: boolean;
 }
 
 const extensions: Record<string, string> = {
@@ -17,6 +19,18 @@ const extensions: Record<string, string> = {
   "image/png": "png",
   "image/webp": "webp",
 };
+
+let volatileParticipantToken: string | undefined;
+
+function participantToken(): string {
+  const create = () => crypto.randomUUID();
+  try {
+    return getOrCreateParticipantToken(window.localStorage, create);
+  } catch {
+    volatileParticipantToken ??= `${create()}${create()}`;
+    return volatileParticipantToken;
+  }
+}
 
 export function PhotoPersonalizer() {
   const [file, setFile] = useState<File>();
@@ -41,6 +55,7 @@ export function PhotoPersonalizer() {
     setSubmitted(false);
     try {
       const requestId = crypto.randomUUID();
+      const anonymousParticipantToken = participantToken();
       const blob = await upload(`incoming/${crypto.randomUUID()}.${extension}`, file, {
         access: "private",
         handleUploadUrl: "/api/upload",
@@ -50,12 +65,19 @@ export function PhotoPersonalizer() {
       const response = await fetch("/api/personalizar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upload_path: blob.pathname, mime_type: file.type, request_id: requestId }),
+        body: JSON.stringify({
+          upload_path: blob.pathname,
+          mime_type: file.type,
+          request_id: requestId,
+          participant_token: anonymousParticipantToken,
+        }),
       });
       const body = (await response.json()) as PersonalizationResult & { erro?: { mensagem?: string } };
       if (!response.ok) throw new Error(body.erro?.mensagem ?? "Não foi possível personalizar a foto.");
       setResult(body);
-      setMessage("Pronto. Sua arte continua privada. Guarde o código de revogação antes de fechar a página.");
+      setMessage(body.reused
+        ? "Esta foto já havia sido processada. Recuperamos a imagem e os controles de consentimento e revogação."
+        : "Pronto. Sua arte continua privada. Guarde o código de revogação antes de fechar a página.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível personalizar a foto.");
     } finally {
@@ -136,6 +158,11 @@ export function PhotoPersonalizer() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={result.result_url} alt="Sua foto personalizada com a marca do WTICIFES 2026" />
           <a className="download-button" href={result.result_url} download>Baixar JPEG</a>
+          <div className="revocation-code">
+            <strong>Código de revogação</strong>
+            <code>{`${result.image_id}:${result.revocation_token}`}</code>
+            <small>Guarde este código para recuperar o controle ou apagar a imagem depois.</small>
+          </div>
           {!submitted && (
             <div className="consent-box">
               <label><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> Autorizo a exibição pública desta imagem nas telas e na vitrine do WTICIFES 2026, sujeita à revisão humana.</label>

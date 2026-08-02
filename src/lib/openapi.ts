@@ -72,7 +72,7 @@ export function createOpenApiDocument(origin: string) {
       schemas: {
         PersonalizationResult: {
           type: "object",
-          required: ["success", "image_id", "result_url", "consent_token", "revocation_token", "expires_at"],
+          required: ["success", "image_id", "result_url", "consent_token", "revocation_token", "expires_at", "reused"],
           properties: {
             success: { type: "boolean", const: true },
             image_id: { type: "string", format: "uuid" },
@@ -80,6 +80,7 @@ export function createOpenApiDocument(origin: string) {
             consent_token: { type: "string" },
             revocation_token: { type: "string" },
             expires_at: { type: "string", format: "date-time" },
+            reused: { type: "boolean", description: "Indica recuperação de uma personalização anterior." },
           },
         },
         ConsentRequest: {

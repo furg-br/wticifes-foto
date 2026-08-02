@@ -10,6 +10,7 @@ import {
 } from "@/lib/crypto-tokens";
 import { isGenerationEnabled } from "@/lib/env";
 import {
+  claimUnidentifiedPrivateImage,
   countParticipantImages,
   createPrivateImage,
   findActiveByContentHash,
@@ -36,7 +37,30 @@ function canReuse(image: ImageRecord, participantHash: string | undefined, reque
   return Boolean(participantHash && image.participantKeyHash === participantHash);
 }
 
-function successResponse(image: ImageRecord, request: Request, requestId: string, remaining: number) {
+async function recoverDuplicate(
+  image: ImageRecord,
+  participantHash: string | undefined,
+  requestHash: string,
+): Promise<ImageRecord | undefined> {
+  if (canReuse(image, participantHash, requestHash)) return image;
+  if (
+    participantHash &&
+    !image.participantKeyHash &&
+    image.status === "private" &&
+    !image.consentedAt
+  ) {
+    return claimUnidentifiedPrivateImage(image.id, participantHash);
+  }
+  return undefined;
+}
+
+function successResponse(
+  image: ImageRecord,
+  request: Request,
+  requestId: string,
+  remaining: number,
+  reused: boolean,
+) {
   const consentToken = deriveBoundToken(image.id, "consent");
   const revocationToken = deriveBoundToken(image.id, "revocation");
   const grant = createImageGrant({
@@ -53,6 +77,7 @@ function successResponse(image: ImageRecord, request: Request, requestId: string
       consent_token: consentToken,
       revocation_token: revocationToken,
       expires_at: image.expiresAt.toISOString(),
+      reused,
       request_id: requestId,
     },
     {
@@ -103,12 +128,12 @@ export async function POST(request: Request): Promise<Response> {
     if (cachedRequestImageId) {
       const cached = await findImageById(cachedRequestImageId);
       if (cached && canReuse(cached, participantHash, idempotencyHash)) {
-        return successResponse(cached, request, requestId, permit.remaining);
+        return successResponse(cached, request, requestId, permit.remaining, true);
       }
     }
     const existingRequest = await findByRequestKey(idempotencyHash);
     if (existingRequest && canReuse(existingRequest, participantHash, idempotencyHash)) {
-      return successResponse(existingRequest, request, requestId, permit.remaining);
+      return successResponse(existingRequest, request, requestId, permit.remaining, true);
     }
 
     await abuse.assertUploadReservation(idempotencyHash, standalone.data.upload_path);
@@ -132,16 +157,22 @@ export async function POST(request: Request): Promise<Response> {
     const contentHash = sha256(source);
     let duplicate = await findActiveByContentHash(contentHash);
     if (duplicate) {
-      if (!canReuse(duplicate, participantHash, idempotencyHash)) {
-        throw new AppError("DUPLICATE_NOT_REUSABLE", 409, "Esta fotografia já foi processada.");
+      const recovered = await recoverDuplicate(duplicate, participantHash, idempotencyHash);
+      if (!recovered) {
+        throw new AppError(
+          "DUPLICATE_NOT_REUSABLE",
+          409,
+          "Esta fotografia pertence a outra sessão. Use o código salvo para revogar ou envie outro arquivo.",
+        );
       }
-      return successResponse(duplicate, request, requestId, permit.remaining);
+      await abuse.rememberIdempotency(idempotencyHash, recovered.id);
+      return successResponse(recovered, request, requestId, permit.remaining, true);
     }
     const recentDuplicateId = await abuse.duplicateImageId(contentHash);
     if (recentDuplicateId) {
       const recent = await findImageById(recentDuplicateId);
       if (recent && canReuse(recent, participantHash, idempotencyHash)) {
-        return successResponse(recent, request, requestId, permit.remaining);
+        return successResponse(recent, request, requestId, permit.remaining, true);
       }
       throw new AppError("DUPLICATE_WINDOW_ACTIVE", 409, "Esta fotografia foi processada recentemente.");
     }
@@ -149,10 +180,16 @@ export async function POST(request: Request): Promise<Response> {
     releases.push(await abuse.acquireLock("content", contentHash));
     duplicate = await findActiveByContentHash(contentHash);
     if (duplicate) {
-      if (!canReuse(duplicate, participantHash, idempotencyHash)) {
-        throw new AppError("DUPLICATE_NOT_REUSABLE", 409, "Esta fotografia já foi processada.");
+      const recovered = await recoverDuplicate(duplicate, participantHash, idempotencyHash);
+      if (!recovered) {
+        throw new AppError(
+          "DUPLICATE_NOT_REUSABLE",
+          409,
+          "Esta fotografia pertence a outra sessão. Use o código salvo para revogar ou envie outro arquivo.",
+        );
       }
-      return successResponse(duplicate, request, requestId, permit.remaining);
+      await abuse.rememberIdempotency(idempotencyHash, recovered.id);
+      return successResponse(recovered, request, requestId, permit.remaining, true);
     }
 
     const personalized = await personalizePhoto(source, mimeType);
@@ -194,7 +231,7 @@ export async function POST(request: Request): Promise<Response> {
       content: contentHash.slice(0, 12),
       status: image.status,
     }));
-    return successResponse(image, request, requestId, permit.remaining);
+    return successResponse(image, request, requestId, permit.remaining, false);
   } catch (error) {
     if (
       identityHash &&
