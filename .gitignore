@@ -1,0 +1,26 @@
+# dependências e builds
+/node_modules
+/.next
+/out
+/coverage
+/test-results
+/playwright-report
+
+# ambiente local
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Vercel e sistema
+.vercel
+.DS_Store
+Thumbs.db
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo

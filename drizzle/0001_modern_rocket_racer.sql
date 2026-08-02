@@ -1,0 +1,2 @@
+DROP INDEX "images_request_key_hash_uidx";--> statement-breakpoint
+CREATE UNIQUE INDEX "images_request_key_hash_uidx" ON "images" USING btree ("request_key_hash") WHERE "images"."request_key_hash" is not null and "images"."deleted_at" is null;

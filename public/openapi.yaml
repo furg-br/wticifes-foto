@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: WTICIFES 2026 — Eu fui, tchê!
+  version: 2.0.0
+  description: API da aplicação standalone. Personalização privada não significa consentimento para publicação.
+paths:
+  /api/personalizar:
+    post:
+      operationId: personalizarFoto
+      summary: Processa um upload privado transitório autorizado pela aplicação.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [upload_path, mime_type, request_id]
+              properties:
+                upload_path: { type: string, pattern: '^incoming/' }
+                mime_type: { type: string, enum: [image/jpeg, image/png, image/webp] }
+                request_id: { type: string, format: uuid }
+                participant_token: { type: string, minLength: 16 }
+      responses:
+        '200': { description: Arte privada criada; isso não autoriza publicação. }
+        '409': { description: Processamento duplicado ou em andamento. }
+        '413': { description: Arquivo acima de 12 MB. }
+        '415': { description: Formato inválido. }
+        '429': { description: Limite de uso atingido. }
+  /api/vitrine/submeter:
+    post:
+      operationId: submeterFotoVitrine
+      summary: Registra consentimento explícito e envia para revisão humana.
+      description: A submissão não garante aprovação. Conteúdo impróprio será rejeitado.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [image_id, consent_token]
+              properties:
+                image_id: { type: string, format: uuid }
+                consent_token: { type: string }
+      responses:
+        '200': { description: Imagem pendente de revisão humana. }
+        '403': { description: Token inválido. }
+        '410': { description: Token expirado. }
+  /api/vitrine/revogar:
+    post:
+      operationId: revogarFotoVitrine
+      summary: Revoga o consentimento e retira a imagem imediatamente.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [image_id, revocation_token]
+              properties:
+                image_id: { type: string, format: uuid }
+                revocation_token: { type: string }
+      responses:
+        '200': { description: Imagem retirada e exclusão solicitada. }
+        '403': { description: Token inválido. }
