@@ -9,11 +9,6 @@ export interface StoredImage {
   expiresAt: Date;
 }
 
-function blobCredentials(): { token: string } | Record<string, never> {
-  const token = process.env.BLOB_READ_WRITE_TOKEN?.trim();
-  return token ? { token } : {};
-}
-
 function logBlobFailure(operation: string, error: unknown): void {
   const errorName = error instanceof Error ? error.name : typeof error;
   const errorMessage = error instanceof Error
@@ -38,15 +33,17 @@ function logBlobFailure(operation: string, error: unknown): void {
 export async function storePersonalizedImage(data: Buffer, now = new Date()): Promise<StoredImage> {
   const day = now.toISOString().slice(0, 10);
   const pathname = `${OUTPUT.blobPrefix}${day}/${randomUUID()}.jpg`;
+  // Sharp may return a Buffer backed by SharedArrayBuffer in a Vercel function.
+  // Undici rejects shared memory as a fetch body, so copy it to a regular ArrayBuffer first.
+  const uploadData = Buffer.from(data);
 
   try {
-    const blob = await put(pathname, data, {
+    const blob = await put(pathname, uploadData, {
       access: "private",
       addRandomSuffix: false,
       allowOverwrite: false,
       contentType: "image/jpeg",
       cacheControlMaxAge: 3600,
-      ...blobCredentials(),
     });
     const expiresAt = new Date(
       Math.floor((now.getTime() + getBlobTtlHours() * 60 * 60 * 1000) / 1000) * 1000,
@@ -65,7 +62,7 @@ export async function storePersonalizedImage(data: Buffer, now = new Date()): Pr
 
 export async function readPersonalizedImage(pathname: string) {
   try {
-    return await get(pathname, { access: "private", useCache: true, ...blobCredentials() });
+    return await get(pathname, { access: "private", useCache: true });
   } catch (error) {
     logBlobFailure("get_personalized_image", error);
     throw new AppError("STORAGE_UNAVAILABLE", 502, "Não foi possível obter a imagem.", {
@@ -99,11 +96,7 @@ export async function readTransientUpload(pathname: string): Promise<Buffer> {
   if (!/^incoming\/[0-9a-f-]{36}\.(?:jpg|jpeg|png|webp)$/i.test(pathname)) {
     throw new AppError("UPLOAD_NOT_AUTHORIZED", 403, "O upload não está autorizado.");
   }
-  const result = await get(pathname, {
-    access: "private",
-    useCache: false,
-    ...blobCredentials(),
-  });
+  const result = await get(pathname, { access: "private", useCache: false });
   if (!result || result.statusCode !== 200) {
     throw new AppError("UPLOAD_NOT_FOUND", 404, "O upload não foi encontrado.");
   }
@@ -116,7 +109,7 @@ export async function readTransientUpload(pathname: string): Promise<Buffer> {
 
 export async function deletePersonalizedImage(pathname: string): Promise<void> {
   try {
-    await del(pathname, blobCredentials());
+    await del(pathname);
   } catch (error) {
     logBlobFailure("delete_image", error);
     throw new AppError("STORAGE_UNAVAILABLE", 502, "Não foi possível remover a imagem.", {
@@ -129,12 +122,7 @@ export async function listStoredImagePaths(): Promise<string[]> {
   const paths: string[] = [];
   let cursor: string | undefined;
   do {
-    const page = await list({
-      prefix: OUTPUT.blobPrefix,
-      limit: 1000,
-      ...(cursor ? { cursor } : {}),
-      ...blobCredentials(),
-    });
+    const page = await list({ prefix: OUTPUT.blobPrefix, limit: 1000, ...(cursor ? { cursor } : {}) });
     paths.push(...page.blobs.map((blob) => blob.pathname));
     cursor = page.hasMore ? page.cursor : undefined;
   } while (cursor);
@@ -146,15 +134,10 @@ export async function deleteStaleTransientUploads(now = new Date(), maxAgeMinute
   let cursor: string | undefined;
   let deleted = 0;
   do {
-    const page = await list({
-      prefix: "incoming/",
-      limit: 1000,
-      ...(cursor ? { cursor } : {}),
-      ...blobCredentials(),
-    });
+    const page = await list({ prefix: "incoming/", limit: 1000, ...(cursor ? { cursor } : {}) });
     const stale = page.blobs.filter((blob) => blob.uploadedAt.getTime() <= cutoff).map((blob) => blob.pathname);
     if (stale.length) {
-      await del(stale, blobCredentials());
+      await del(stale);
       deleted += stale.length;
     }
     cursor = page.hasMore ? page.cursor : undefined;
@@ -168,18 +151,13 @@ export async function deleteExpiredImages(now = new Date()): Promise<number> {
   let deleted = 0;
 
   do {
-    const page = await list({
-      prefix: OUTPUT.blobPrefix,
-      limit: 1000,
-      ...(cursor ? { cursor } : {}),
-      ...blobCredentials(),
-    });
+    const page = await list({ prefix: OUTPUT.blobPrefix, limit: 1000, ...(cursor ? { cursor } : {}) });
     const expired = page.blobs
       .filter((blob) => blob.uploadedAt.getTime() <= cutoff)
       .map((blob) => blob.url);
 
     if (expired.length > 0) {
-      await del(expired, blobCredentials());
+      await del(expired);
       deleted += expired.length;
     }
     cursor = page.hasMore ? page.cursor : undefined;
