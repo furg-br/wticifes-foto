@@ -100,7 +100,6 @@ export function getRetention() {
 
 export function getShowcaseSettings() {
   return {
-    intervalSeconds: integerEnv("SHOWCASE_INTERVAL_SECONDS", 10, 3, 300),
     feedLimit: integerEnv("SHOWCASE_FEED_LIMIT", 20, 1, 100),
   } as const;
 }

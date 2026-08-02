@@ -1,8 +1,7 @@
-import { getShowcaseSettings } from "@/lib/env";
-import { Slideshow } from "./slideshow";
+import { MasonryShowcase } from "./masonry-showcase";
 
 export const dynamic = "force-dynamic";
 
 export default function ShowcasePage() {
-  return <Slideshow intervalSeconds={getShowcaseSettings().intervalSeconds} />;
+  return <MasonryShowcase />;
 }

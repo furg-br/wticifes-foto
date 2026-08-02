@@ -98,7 +98,7 @@ Não execute `drizzle-kit push` em produção. Faça backup ou crie uma branch N
 | `PENDING_REVIEW_RETENTION_HOURS` | Não | Padrão 72. |
 | `REJECTED_RETENTION_HOURS` | Não | Padrão 1. |
 | `APPROVED_RETENTION_DAYS` | Não | Padrão 30. |
-| `SHOWCASE_INTERVAL_SECONDS`, `SHOWCASE_FEED_LIMIT` | Não | Padrões 10 e 20. |
+| `SHOWCASE_FEED_LIMIT` | Não | Máximo de fotos carregadas no mosaico; padrão 20. |
 | `CONTENT_SAFETY_PROVIDER` | Não | Deve permanecer `manual`; falha fechada para outro valor. |
 
 Nunca versionar `.env.local`. Use valores aleatórios diferentes e com pelo menos 32 caracteres para cada segredo.
@@ -204,7 +204,7 @@ Roteiro manual mínimo:
 3. Confirme que personalizar não coloca a imagem no feed.
 4. Marque consentimento; confirme `pending_review` e ausência no feed.
 5. Entre com admin permitido, tente mutação sem CSRF, aprove uma única imagem e confirme auditoria.
-6. Abra `/vitrine` em celular e tela cheia; confirme `object-fit: contain`, rotação e ausência de dados pessoais.
+6. Abra `/vitrine` em celular e tela cheia; confirme o mosaico masonry responsivo, proporções integrais, rolagem automática e ausência de dados pessoais.
 7. Revogue; confirme sumiço no próximo refresh e falha do URL anterior.
 8. Rejeite/remova e confirme exclusão física ou retomada pelo cron.
 9. Reduza limites temporariamente e valide 409, 429, `Retry-After`, cooldown e `GENERATION_ENABLED=false`.
