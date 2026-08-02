@@ -112,10 +112,10 @@ Em **Storage → Create Database → Blob**, crie um store com acesso **Private*
 ### Neon Postgres
 
 1. Abra **Storage → Create Database → Marketplace → Neon** e crie/conecte o projeto.
-2. Habilite Production, Preview e Development conforme sua política; confirme `DATABASE_URL` em cada ambiente.
-3. Em uma branch de banco de teste, execute `npm run db:migrate`.
-4. Confirme as tabelas `images`, `moderation_audit`, `blocked_participants` e os índices da migration.
-5. Aplique a mesma migration à produção antes do primeiro tráfego.
+2. Habilite Production e Preview conforme sua política; confirme `DATABASE_URL` em cada ambiente.
+3. Ative branches Neon por deployment de Preview para isolar dados e alterações de schema.
+4. O script `vercel-build` executa `npm run db:migrate` antes do build e aplica somente migrations versionadas ainda pendentes no banco daquele ambiente.
+5. Confirme as tabelas `images`, `moderation_audit`, `blocked_participants` e os índices da migration antes do primeiro tráfego.
 
 O `vercel.json` executa a retenção aos 15 minutos de cada hora; use um plano que aceite essa frequência de Cron. Se o plano permitir apenas execução diária, uploads abandonados podem permanecer privados por até cerca de 25 horas, embora envios concluídos continuem sendo apagados imediatamente.
 
