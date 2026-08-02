@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
+import { connection } from "next/server";
 import "./globals.css";
 
 const lato = Lato({
@@ -17,7 +18,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  await connection();
+
   return (
     <html lang="pt-BR">
       <body className={lato.variable}>{children}</body>

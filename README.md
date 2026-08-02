@@ -49,7 +49,7 @@ Uma imagem só entra no feed se tiver simultaneamente `status=approved`, consent
 - Erros de arquivo acumulam tentativas por identidade de rede pseudonimizada e ativam bloqueio temporário.
 - `GENERATION_ENABLED=false` interrompe novos uploads e processamentos antes de custo relevante.
 - JPEG/PNG/WebP são verificados por bytes reais e Sharp; SVG, animação, conteúdo disfarçado, excesso de pixels e dimensões mínimas inválidas são rejeitados.
-- CSP, HSTS, `nosniff`, bloqueio de frames, Blob privado e logs estruturados sem IP, tokens ou URLs completas.
+- CSP estrita com nonce exclusivo por requisição, HSTS, `nosniff`, bloqueio de frames, Blob privado e logs estruturados sem IP, tokens ou URLs completas.
 
 ## Desenvolvimento
 
