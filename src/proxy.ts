@@ -8,7 +8,7 @@ export function buildContentSecurityPolicy(nonce: string, development: boolean):
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
     "font-src 'self'",
-    "connect-src 'self' https://*.blob.vercel-storage.com",
+    "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
     "base-uri 'none'",
     "form-action 'self'",
     "frame-ancestors 'none'",

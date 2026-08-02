@@ -12,4 +12,13 @@ describe("Content Security Policy", () => {
   it("permite eval apenas no ambiente de desenvolvimento", () => {
     expect(buildContentSecurityPolicy("nonce-de-teste", true)).toContain("'unsafe-eval'");
   });
+
+  it("permite o plano de controle e o armazenamento do Vercel Blob", () => {
+    const policy = buildContentSecurityPolicy("nonce-de-teste", false);
+    const connectDirective = policy.split("; ").find((directive) => directive.startsWith("connect-src"));
+
+    expect(connectDirective).toBe(
+      "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
+    );
+  });
 });
