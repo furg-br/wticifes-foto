@@ -17,10 +17,6 @@ export default function Home() {
         <h1 id="titulo">
           <span>Eu</span> <strong>fui,</strong> <em>tchê!</em>
         </h1>
-        <p className="intro">
-          Envie uma fotografia diretamente por esta página. O serviço preserva a foto inteira
-          e acrescenta a identidade do evento em uma faixa separada.
-        </p>
         <PhotoPersonalizer />
         <nav aria-label="Informações legais">
           <Link href="/vitrine">Vitrine pública</Link>

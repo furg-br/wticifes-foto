@@ -83,14 +83,6 @@ h1 em {
   font-style: italic;
 }
 
-.intro {
-  max-width: 45rem;
-  margin: 1.75rem auto 0;
-  color: var(--muted);
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  line-height: 1.65;
-}
-
 nav {
   display: flex;
   flex-wrap: wrap;
