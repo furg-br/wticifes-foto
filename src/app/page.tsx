@@ -22,7 +22,6 @@ export default function Home() {
           <Link href="/vitrine">Vitrine pública</Link>
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/termos">Termos de uso</Link>
-          <Link href="/openapi.json">OpenAPI</Link>
         </nav>
       </section>
     </main>

@@ -11,6 +11,7 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
   await expect(page.getByText("Metadados removidos", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Blob privado e temporário", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Envie uma fotografia diretamente por esta página/i)).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "OpenAPI" })).toHaveCount(0);
   await expect(page.getByText(/GPT Action|ChatGPT/i)).toHaveCount(0);
 });
 
