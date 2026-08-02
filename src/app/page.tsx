@@ -14,7 +14,6 @@ export default function Home() {
           priority
           alt="WTICIFES Rio Grande do Sul 2026"
         />
-        <p className="eyebrow">Experiência oficial</p>
         <h1 id="titulo">
           <span>Eu</span> <strong>fui,</strong> <em>tchê!</em>
         </h1>
@@ -22,12 +21,6 @@ export default function Home() {
           Envie uma fotografia diretamente por esta página. O serviço preserva a foto inteira
           e acrescenta a identidade do evento em uma faixa separada.
         </p>
-        <div className="facts" aria-label="Características do serviço">
-          <span>Sem IA generativa</span>
-          <span>Sem recorte da foto</span>
-          <span>Metadados removidos</span>
-          <span>Blob privado e temporário</span>
-        </div>
         <PhotoPersonalizer />
         <nav aria-label="Informações legais">
           <Link href="/vitrine">Vitrine pública</Link>

@@ -65,6 +65,11 @@ h1 {
   letter-spacing: -0.06em;
 }
 
+.hero > h1 {
+  margin-top: clamp(1rem, 3vw, 2rem);
+  font-family: var(--font-lato), Arial, Helvetica, sans-serif;
+}
+
 h1 span {
   color: var(--red);
 }
@@ -75,7 +80,7 @@ h1 strong {
 
 h1 em {
   color: var(--green);
-  font-style: normal;
+  font-style: italic;
 }
 
 .intro {
@@ -84,23 +89,6 @@ h1 em {
   color: var(--muted);
   font-size: clamp(1rem, 2vw, 1.2rem);
   line-height: 1.65;
-}
-
-.facts {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.65rem;
-  margin-top: 2rem;
-}
-
-.facts span {
-  padding: 0.55rem 0.85rem;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 999px;
-  color: var(--muted);
-  background: rgb(0 0 0 / 18%);
-  font-size: 0.85rem;
 }
 
 nav {

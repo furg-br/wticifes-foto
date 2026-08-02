@@ -1,5 +1,14 @@
 import type { Metadata } from "next";
+import { Lato } from "next/font/google";
 import "./globals.css";
+
+const lato = Lato({
+  subsets: ["latin"],
+  weight: ["400", "700", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-lato",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Eu fui, tchê! — WTICIFES 2026",
@@ -11,7 +20,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body className={lato.variable}>{children}</body>
     </html>
   );
 }

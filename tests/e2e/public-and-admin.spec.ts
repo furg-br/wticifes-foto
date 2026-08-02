@@ -5,6 +5,11 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Eu fui, tchê!" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Crie sua foto" })).toBeVisible();
   await expect(page.locator('input[type="file"]')).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
+  await expect(page.getByText("Experiência oficial", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Sem IA generativa", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Sem recorte da foto", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Metadados removidos", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Blob privado e temporário", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/GPT Action|ChatGPT/i)).toHaveCount(0);
 });
 
