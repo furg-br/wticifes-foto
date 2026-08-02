@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { parse as parseFont, type Font } from "opentype.js";
 import sharp from "sharp";
 import { AppError } from "./app-error";
 import { BRAND, OFFICIAL_LOGO_SHA256 } from "./brand";
@@ -42,7 +43,7 @@ const fontPath = path.join(
 const FONT_SHA256 = "808c62839c62dbce7de689af7603666fc7f8b81e0df537d8a5212c87580d4337";
 
 let logoPromise: Promise<Buffer> | undefined;
-let fontPromise: Promise<void> | undefined;
+let fontPromise: Promise<Font> | undefined;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Math.round(value)));
@@ -113,12 +114,17 @@ async function loadOfficialLogo(): Promise<Buffer> {
   return logoPromise;
 }
 
-async function verifyFont(): Promise<void> {
+async function loadFont(): Promise<Font> {
   fontPromise ??= readFile(fontPath).then((data) => {
     const hash = createHash("sha256").update(data).digest("hex");
     if (hash !== FONT_SHA256) {
       throw new AppError("INVALID_FONT_ASSET", 500, "O arquivo local da fonte Lato está inválido.");
     }
+    const font = parseFont(Uint8Array.from(data).buffer);
+    if (![..."Eu fui,tchê!"].every((character) => character === " " || font.hasChar(character))) {
+      throw new AppError("INVALID_FONT_ASSET", 500, "A fonte Lato não contém todos os caracteres necessários.");
+    }
+    return font;
   });
   return fontPromise;
 }
@@ -217,25 +223,40 @@ async function renderLogo(box: Box): Promise<{ data: Buffer; width: number; heig
 }
 
 async function renderPhrase(box: Box): Promise<{ data: Buffer; width: number; height: number }> {
-  await verifyFont();
-  const markup = [
-    `<span foreground="${BRAND.red}">Eu</span>`,
-    `<span foreground="${BRAND.yellow}">fui,</span>`,
-    `<span foreground="${BRAND.green}">tchê!</span>`,
-  ].join(" ");
+  const font = await loadFont();
+  const segments = [
+    { text: "Eu", color: BRAND.red },
+    { text: " fui,", color: BRAND.yellow },
+    { text: " tchê!", color: BRAND.green },
+  ] as const;
+  const renderOptions = { kerning: true } as const;
+  const widthAtOnePixel = segments.reduce(
+    (total, segment) => total + font.getAdvanceWidth(segment.text, 1, renderOptions),
+    0,
+  );
+  const heightAtOnePixel = (font.ascender - font.descender) / font.unitsPerEm;
+  const fontSize = Math.max(
+    1,
+    Math.min(box.width / widthAtOnePixel, box.height / heightAtOnePixel) * 0.9,
+  );
+  const lineHeight = heightAtOnePixel * fontSize;
+  const totalWidth = widthAtOnePixel * fontSize;
+  let x = Math.max(0, (box.width - totalWidth) / 2);
+  const baseline = Math.max(
+    (font.ascender / font.unitsPerEm) * fontSize,
+    (box.height - lineHeight) / 2 + (font.ascender / font.unitsPerEm) * fontSize,
+  );
+  const paths = segments.map((segment) => {
+    const pathData = font.getPath(segment.text, x, baseline, fontSize, renderOptions).toPathData(3);
+    x += font.getAdvanceWidth(segment.text, fontSize, renderOptions);
+    return `<path fill="${segment.color}" d="${pathData}"/>`;
+  });
+  const svg = Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${box.width}" height="${box.height}" viewBox="0 0 ${box.width} ${box.height}">${paths.join("")}</svg>`,
+    "utf8",
+  );
 
-  const rendered = await sharp({
-    text: {
-      text: markup,
-      font: "Lato Black",
-      fontfile: fontPath,
-      width: Math.max(1, box.width),
-      height: Math.max(1, box.height),
-      align: "centre",
-      rgba: true,
-      wrap: "none",
-    },
-  })
+  const rendered = await sharp(svg)
     .png({ compressionLevel: 6, adaptiveFiltering: false })
     .toBuffer({ resolveWithObject: true });
 
