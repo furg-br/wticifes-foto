@@ -37,10 +37,12 @@ const fontPath = path.join(
   /*turbopackIgnore: true*/ process.cwd(),
   "public",
   "fonts",
-  "Nunito-ExtraBold.ttf",
+  "Lato-Black.ttf",
 );
+const FONT_SHA256 = "808c62839c62dbce7de689af7603666fc7f8b81e0df537d8a5212c87580d4337";
 
 let logoPromise: Promise<Buffer> | undefined;
+let fontPromise: Promise<void> | undefined;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, Math.round(value)));
@@ -109,6 +111,16 @@ async function loadOfficialLogo(): Promise<Buffer> {
     return data;
   });
   return logoPromise;
+}
+
+async function verifyFont(): Promise<void> {
+  fontPromise ??= readFile(fontPath).then((data) => {
+    const hash = createHash("sha256").update(data).digest("hex");
+    if (hash !== FONT_SHA256) {
+      throw new AppError("INVALID_FONT_ASSET", 500, "O arquivo local da fonte Lato está inválido.");
+    }
+  });
+  return fontPromise;
 }
 
 function detectFormat(data: Buffer): "jpeg" | "png" | "webp" | undefined {
@@ -205,6 +217,7 @@ async function renderLogo(box: Box): Promise<{ data: Buffer; width: number; heig
 }
 
 async function renderPhrase(box: Box): Promise<{ data: Buffer; width: number; height: number }> {
+  await verifyFont();
   const markup = [
     `<span foreground="${BRAND.red}">Eu</span>`,
     `<span foreground="${BRAND.yellow}">fui,</span>`,
@@ -214,7 +227,7 @@ async function renderPhrase(box: Box): Promise<{ data: Buffer; width: number; he
   const rendered = await sharp({
     text: {
       text: markup,
-      font: "Nunito ExtraBold",
+      font: "Lato Black",
       fontfile: fontPath,
       width: Math.max(1, box.width),
       height: Math.max(1, box.height),
@@ -242,37 +255,48 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
   const photoHeight = photo.info.height;
   const layout = calculateLayout(photoWidth, photoHeight);
   const [logo, phrase] = await Promise.all([
-    renderLogo(layout.logo),
-    renderPhrase(layout.phrase),
+    renderLogo(layout.logo).catch((cause: unknown) => {
+      if (cause instanceof AppError) throw cause;
+      throw new AppError("LOGO_RENDER_FAILED", 500, "Não foi possível renderizar o logo.", { cause });
+    }),
+    renderPhrase(layout.phrase).catch((cause: unknown) => {
+      if (cause instanceof AppError) throw cause;
+      throw new AppError("PHRASE_RENDER_FAILED", 500, "Não foi possível renderizar a frase.", { cause });
+    }),
   ]);
   const logoPosition = centeredPosition(layout.logo, logo.width, logo.height, photoHeight);
   const phrasePosition = centeredPosition(layout.phrase, phrase.width, phrase.height, photoHeight);
   const height = photoHeight + layout.bandHeight;
 
-  let output = await sharp({
-    create: {
-      width: photoWidth,
-      height,
-      channels: 3,
-      background: BRAND.bandBackground,
-    },
-  })
-    .composite([
-      { input: photo.data, left: 0, top: 0 },
-      { input: logo.data, ...logoPosition },
-      { input: phrase.data, ...phrasePosition },
-    ])
-    .toColourspace("srgb")
-    .withIccProfile("srgb")
-    .jpeg({
-      quality: OUTPUT.jpegQuality,
-      chromaSubsampling: "4:4:4",
-      optimiseCoding: false,
-      optimiseScans: false,
-      trellisQuantisation: false,
-      overshootDeringing: false,
+  let output: Buffer;
+  try {
+    output = await sharp({
+      create: {
+        width: photoWidth,
+        height,
+        channels: 3,
+        background: BRAND.bandBackground,
+      },
     })
-    .toBuffer();
+      .composite([
+        { input: photo.data, left: 0, top: 0 },
+        { input: logo.data, ...logoPosition },
+        { input: phrase.data, ...phrasePosition },
+      ])
+      .toColourspace("srgb")
+      .withIccProfile("srgb")
+      .jpeg({
+        quality: OUTPUT.jpegQuality,
+        chromaSubsampling: "4:4:4",
+        optimiseCoding: false,
+        optimiseScans: false,
+        trellisQuantisation: false,
+        overshootDeringing: false,
+      })
+      .toBuffer();
+  } catch (cause) {
+    throw new AppError("COMPOSITION_FAILED", 500, "Não foi possível compor a imagem.", { cause });
+  }
 
   let finalWidth = photoWidth;
   let finalHeight = height;
@@ -285,18 +309,21 @@ export async function personalizePhoto(data: Buffer, mimeType: string): Promise<
     );
     const targetWidth = Math.max(640, Math.floor(finalWidth * scale));
     const resized = await sharp(output)
-      .resize({ width: targetWidth, withoutEnlargement: true, kernel: sharp.kernel.lanczos3 })
-      .toColourspace("srgb")
-      .withIccProfile("srgb")
-      .jpeg({
-        quality: OUTPUT.jpegQuality,
-        chromaSubsampling: "4:4:4",
-        optimiseCoding: false,
-        optimiseScans: false,
-        trellisQuantisation: false,
-        overshootDeringing: false,
-      })
-      .toBuffer({ resolveWithObject: true });
+        .resize({ width: targetWidth, withoutEnlargement: true, kernel: sharp.kernel.lanczos3 })
+        .toColourspace("srgb")
+        .withIccProfile("srgb")
+        .jpeg({
+          quality: OUTPUT.jpegQuality,
+          chromaSubsampling: "4:4:4",
+          optimiseCoding: false,
+          optimiseScans: false,
+          trellisQuantisation: false,
+          overshootDeringing: false,
+        })
+        .toBuffer({ resolveWithObject: true })
+        .catch((cause: unknown) => {
+          throw new AppError("OUTPUT_RESIZE_FAILED", 500, "Não foi possível ajustar a saída JPEG.", { cause });
+        });
     const appliedScale = resized.info.width / finalWidth;
     output = resized.data;
     finalWidth = resized.info.width;
