@@ -76,7 +76,7 @@ Não execute `drizzle-kit push` em produção. Faça backup ou crie uma branch N
 | Variável | Obrigatória | Uso |
 | --- | --- | --- |
 | `DATABASE_URL` | Sim | Conexão Neon Postgres com TLS. |
-| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Sim | Rate limit, locks, cooldown e idempotência. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Sim | Rate limit, locks, cooldown e idempotência. A integração nativa também pode fornecer `UPSTASH_REDIS_REST_KV_REST_API_URL` e `UPSTASH_REDIS_REST_KV_REST_API_TOKEN`. |
 | `BLOB_READ_WRITE_TOKEN` | Sim | Store Vercel Blob criado como **private**. |
 | `DOWNLOAD_SIGNING_SECRET` | Sim | Assinatura HMAC dos links; mínimo 32 caracteres. |
 | `RATE_LIMIT_SECRET` | Sim | HMAC de participante/rede/request; mínimo 32 caracteres. |
@@ -123,7 +123,7 @@ O `vercel.json` executa a retenção aos 15 minutos de cada hora; use um plano q
 
 1. Abra **Storage → Create Database → Marketplace → Upstash Redis**.
 2. Escolha uma região próxima da Function/Neon e conecte o banco.
-3. Confirme `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`.
+3. Confirme `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`, ou o par gerado pela integração nativa `UPSTASH_REDIS_REST_KV_REST_API_URL` e `UPSTASH_REDIS_REST_KV_REST_API_TOKEN`; ambos são reconhecidos.
 4. Não compartilhe esse Redis com aplicações não confiáveis; as chaves usam prefixo `wticifes:`.
 5. Teste um limite baixo em Preview e confirme 429 + `Retry-After` antes de restaurar os valores de produção.
 

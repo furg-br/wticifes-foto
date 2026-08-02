@@ -12,12 +12,28 @@ export interface RateLimitResult {
 
 let redisClient: Redis | undefined;
 
+export function resolveRedisCredentials(
+  environment: Readonly<Record<string, string | undefined>> = process.env,
+): { url: string; token: string } | undefined {
+  const url =
+    environment.UPSTASH_REDIS_REST_URL?.trim() ||
+    environment.KV_REST_API_URL?.trim() ||
+    environment.UPSTASH_REDIS_REST_KV_REST_API_URL?.trim();
+  const token =
+    environment.UPSTASH_REDIS_REST_TOKEN?.trim() ||
+    environment.KV_REST_API_TOKEN?.trim() ||
+    environment.UPSTASH_REDIS_REST_KV_REST_API_TOKEN?.trim();
+
+  return url && token ? { url, token } : undefined;
+}
+
 export function getRedis(): Redis {
   if (redisClient) return redisClient;
-  if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const credentials = resolveRedisCredentials();
+  if (!credentials) {
     throw new AppError("REDIS_NOT_CONFIGURED", 503, "A proteção distribuída não está configurada.");
   }
-  redisClient = Redis.fromEnv();
+  redisClient = new Redis(credentials);
   return redisClient;
 }
 
