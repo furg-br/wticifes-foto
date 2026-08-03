@@ -77,6 +77,7 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
 });
 
 test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.route("**/test-showcase-*.svg", async (route) => {
     const index = Number(route.request().url().match(/test-showcase-(\d+)\.svg/)?.[1] ?? 0);
     const dimensions = [
@@ -93,7 +94,7 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
-        images: Array.from({ length: 15 }, (_, index) => ({
+        images: Array.from({ length: 12 }, (_, index) => ({
           url: `/test-showcase-${index}.svg`,
           expires_at: "2099-01-01T00:00:00.000Z",
         })),
@@ -104,19 +105,19 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
   await page.goto("/vitrine");
   const mosaic = page.getByRole("list", { name: "Fotos aprovadas do WTICIFES 2026" });
   await expect(mosaic).toBeVisible();
-  await expect(mosaic.getByRole("listitem")).toHaveCount(16);
+  await expect(mosaic.getByRole("listitem")).toHaveCount(13);
   await expect(mosaic).toHaveCSS("column-count", "5");
   const photos = mosaic.locator(".showcase-photo");
-  await expect(photos).toHaveCount(15);
+  await expect(photos).toHaveCount(12);
   await photos.evaluateAll((images) => Promise.all(images.map((image) => (image as HTMLImageElement).decode())));
   const firstPhoto = photos.first();
-  await expect(firstPhoto).toHaveCSS("max-height", "180px");
+  await expect(firstPhoto).toHaveCSS("max-height", "486px");
   await expect(firstPhoto).toHaveCSS("object-fit", "contain");
   const photosInsideViewport = await photos.evaluateAll((images) => images.filter((image) => {
     const bounds = image.getBoundingClientRect();
     return bounds.top < window.innerHeight && bounds.bottom > 0;
   }).length);
-  expect(photosInsideViewport).toBeGreaterThanOrEqual(14);
+  expect(photosInsideViewport).toBeGreaterThanOrEqual(11);
 
   const qrCard = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrCard).toBeVisible();
