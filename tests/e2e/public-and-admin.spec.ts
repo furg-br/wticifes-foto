@@ -7,6 +7,18 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
       cspErrors.push(message.text());
     }
   });
+  await page.route("**/api/estatisticas", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        total_personalizations: 321,
+        unique_participants: 198,
+        today_personalizations: 87,
+        showcase_photos: 42,
+        updated_at: "2026-08-03T12:00:00.000Z",
+      }),
+    });
+  });
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Eu fui, tchê!" })).toBeVisible();
@@ -27,6 +39,11 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
   await expect(page.getByText(/Envie uma fotografia diretamente por esta página/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "OpenAPI" })).toHaveCount(0);
   await expect(page.getByText(/GPT Action|ChatGPT/i)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "WTICIFES em números" })).toBeVisible();
+  await expect(page.getByText("321", { exact: true })).toBeVisible();
+  await expect(page.getByText("198", { exact: true })).toBeVisible();
+  await expect(page.getByText("87", { exact: true })).toBeVisible();
+  await expect(page.getByText("42", { exact: true })).toBeVisible();
   expect(cspErrors).toEqual([]);
 });
 

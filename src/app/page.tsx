@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { PhotoPersonalizer } from "./photo-personalizer";
+import { UsageStatistics } from "./usage-statistics";
 
 export default function Home() {
   return (
@@ -18,6 +19,7 @@ export default function Home() {
           <span>Eu</span> <strong>fui,</strong> <em>tchê!</em>
         </h1>
         <PhotoPersonalizer />
+        <UsageStatistics />
         <nav aria-label="Informações legais">
           <Link href="/vitrine">Vitrine pública</Link>
           <Link href="/privacidade">Privacidade</Link>

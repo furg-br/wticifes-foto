@@ -23,6 +23,42 @@ export interface TransitionResult {
   changed: boolean;
 }
 
+export interface PublicUsageStatistics {
+  totalPersonalizations: number;
+  uniqueParticipants: number;
+  todayPersonalizations: number;
+  showcasePhotos: number;
+}
+
+export async function getPublicUsageStatistics(now = new Date()): Promise<PublicUsageStatistics> {
+  const result = await getDatabase().execute(sql<PublicUsageStatistics>`
+    SELECT
+      count(*)::int AS "totalPersonalizations",
+      count(DISTINCT participant_key_hash)::int AS "uniqueParticipants",
+      count(*) FILTER (
+        WHERE created_at >= (
+          date_trunc('day', timezone('America/Sao_Paulo', ${now}))
+          AT TIME ZONE 'America/Sao_Paulo'
+        )
+      )::int AS "todayPersonalizations",
+      count(*) FILTER (
+        WHERE status = 'approved'
+          AND removed_at IS NULL
+          AND deleted_at IS NULL
+          AND publication_expires_at > ${now}
+      )::int AS "showcasePhotos"
+    FROM images
+  `);
+  const row = result.rows[0];
+
+  return {
+    totalPersonalizations: Number(row?.totalPersonalizations ?? 0),
+    uniqueParticipants: Number(row?.uniqueParticipants ?? 0),
+    todayPersonalizations: Number(row?.todayPersonalizations ?? 0),
+    showcasePhotos: Number(row?.showcasePhotos ?? 0),
+  };
+}
+
 export async function createPrivateImage(input: CreatePrivateImageInput): Promise<ImageRecord> {
   const [created] = await getDatabase()
     .insert(images)

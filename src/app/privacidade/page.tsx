@@ -7,7 +7,7 @@ export default function Privacidade() {
     <main className="legal">
       <article>
         <h1>Privacidade</h1>
-        <p>Última atualização: 2 de agosto de 2026.</p>
+        <p>Última atualização: 3 de agosto de 2026.</p>
         <h2>Dados tratados</h2>
         <p>
           A aplicação recebe uma fotografia e dados técnicos mínimos para segurança. Não exige nome,
@@ -35,6 +35,13 @@ export default function Privacidade() {
           Imagens aprovadas podem aparecer publicamente na página da vitrine e em televisões, projetores
           ou outras telas do WTICIFES 2026. A vitrine não mostra nome, legenda, token ou identificador do
           participante.
+        </p>
+        <h2>Estatísticas agregadas</h2>
+        <p>
+          A página inicial apresenta somente contagens coletivas de personalizações, participantes
+          estimados, criações do dia e imagens disponíveis na vitrine. A estimativa de participantes usa
+          apenas o HMAC anônimo já mantido para controles de uso; nenhuma identificação individual é
+          publicada ou enviada ao navegador junto dessas estatísticas.
         </p>
         <h2>Retenção e revogação</h2>
         <p>

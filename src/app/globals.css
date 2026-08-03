@@ -427,6 +427,95 @@ button:disabled {
   text-align: center;
 }
 
+.usage-statistics {
+  max-width: 42rem;
+  margin: 1.5rem auto 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  text-align: left;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 4%);
+}
+
+.usage-statistics-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.usage-statistics-heading h2,
+.usage-statistics-heading p {
+  margin: 0;
+}
+
+.usage-statistics-heading h2 {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+}
+
+.usage-statistics-heading p,
+.usage-statistics small,
+.statistics-unavailable {
+  color: var(--muted);
+}
+
+.usage-statistics-heading p,
+.usage-statistics small {
+  font-size: 0.75rem;
+}
+
+.usage-statistics dl {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.7rem;
+  margin: 0 0 0.8rem;
+}
+
+.usage-statistics dl div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.8rem 0.55rem;
+  text-align: center;
+  border-radius: 0.7rem;
+  background: rgb(0 0 0 / 24%);
+}
+
+.usage-statistics dt {
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.usage-statistics dd {
+  order: -1;
+  margin: 0;
+  color: var(--yellow);
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.statistics-unavailable {
+  margin: 0 0 0.7rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 36rem) {
+  .usage-statistics-heading {
+    display: block;
+  }
+
+  .usage-statistics-heading p {
+    margin-top: 0.25rem;
+  }
+
+  .usage-statistics dl {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 .personalizer form,
 .personalizer-result,
 .consent-box {
