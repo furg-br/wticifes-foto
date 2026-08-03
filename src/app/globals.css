@@ -346,7 +346,7 @@ button:disabled {
   height: 0.3rem;
   content: "";
   border-radius: 0 0 999px 999px;
-  background: linear-gradient(90deg, #d80019 0 33%, #ffb900 33% 66%, #659a59 66%);
+  background: linear-gradient(90deg, var(--green) 0 33%, var(--red) 33% 66%, var(--yellow) 66%);
 }
 
 .showcase-qr-card img {

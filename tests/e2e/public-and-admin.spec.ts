@@ -63,6 +63,15 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
   await expect(page.getByAltText("WTICIFES Rio Grande do Sul 2026")).toBeVisible();
   const qrLink = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrLink).toBeVisible();
+  const qrStripe = await qrLink.evaluate((element) =>
+    window.getComputedStyle(element, "::before").backgroundImage,
+  );
+  const greenPosition = qrStripe.indexOf("rgb(103, 145, 87)");
+  const redPosition = qrStripe.indexOf("rgb(201, 2, 22)");
+  const yellowPosition = qrStripe.indexOf("rgb(255, 179, 3)");
+  expect(greenPosition).toBeGreaterThanOrEqual(0);
+  expect(redPosition).toBeGreaterThan(greenPosition);
+  expect(yellowPosition).toBeGreaterThan(redPosition);
   expect(new URL((await qrLink.getAttribute("href")) ?? "", page.url()).pathname).toBe("/");
   await expect(page.getByAltText("QR Code para criar sua foto do WTICIFES 2026")).toBeVisible();
 });
