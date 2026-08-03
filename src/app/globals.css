@@ -71,15 +71,15 @@ h1 {
 }
 
 h1 span {
-  color: var(--red);
+  color: var(--green);
 }
 
 h1 strong {
-  color: var(--yellow);
+  color: var(--red);
 }
 
 h1 em {
-  color: var(--green);
+  color: var(--yellow);
   font-style: italic;
 }
 

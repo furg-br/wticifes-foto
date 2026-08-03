@@ -19,4 +19,4 @@ export const OFFICIAL_LOGO_SHA256 =
 
 /** Lettering artístico aprovado (versão 5), mantido como ativo estático e imutável. */
 export const OFFICIAL_PHRASE_SHA256 =
-  "401db7615e1ae38f362d96ddbd762ecaf9e4f2056b655dd8630b20cb59d096e5";
+  "44fe27ba44e590e7954fc9aff3b40b2d8f6279c6cb84793fb4fa56260a9f0a73";

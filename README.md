@@ -18,7 +18,7 @@ flowchart LR
 
 A Vercel limita corpos de Functions a 4,5 MB. Para aceitar 12 MB sem expor credenciais, o navegador usa o fluxo oficial de Client Upload do Vercel Blob. A entrada fica no store privado pelo menor tempo possível: o servidor valida a reserva, lê no máximo 12 MB e apaga o objeto antes de executar o Sharp. Uploads abandonados tornam-se elegíveis após uma hora e são removidos no ciclo horário seguinte. Somente o JPEG final é retido.
 
-O compositor preserva toda a foto, respeita EXIF, nunca recorta nem amplia, reduz apenas por segurança/desempenho e limita a área fotográfica a 2400 × 4000. O logo fica à esquerda e o lettering artístico à direita, sobre uma tarja branca translúcida dentro da própria foto. A saída é JPEG sRGB qualidade 90 sem metadados. Caso um resultado ultrapasse o limite seguro de resposta da Function, ele é reduzido deterministicamente, sem distorção e ainda em qualidade 90.
+O compositor preserva toda a foto, respeita EXIF, nunca recorta nem amplia, reduz apenas por segurança/desempenho e limita a área fotográfica a 2400 × 4000. O logo fica à esquerda e o lettering artístico à direita, com “Eu” verde, “fui,” vermelho e “tchê!” amarelo, sobre uma tarja branca translúcida dentro da própria foto. A saída é JPEG sRGB qualidade 90 sem metadados. Caso um resultado ultrapasse o limite seguro de resposta da Function, ele é reduzido deterministicamente, sem distorção e ainda em qualidade 90.
 
 ## Estados e publicação
 

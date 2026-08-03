@@ -23,6 +23,7 @@
     "db:check": "drizzle-kit check",
     "verify-logo": "node scripts/verify-logo.mjs",
     "extract-brand-colors": "node scripts/extract-brand-colors.mjs",
+    "recolor-phrase": "node scripts/recolor-phrase.mjs",
     "check": "npm run verify-logo && npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {

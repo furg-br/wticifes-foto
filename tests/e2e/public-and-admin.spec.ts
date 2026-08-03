@@ -21,7 +21,11 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Eu fui, tchê!" })).toBeVisible();
+  const slogan = page.getByRole("heading", { name: "Eu fui, tchê!" });
+  await expect(slogan).toBeVisible();
+  await expect(slogan.locator("span")).toHaveCSS("color", "rgb(103, 145, 87)");
+  await expect(slogan.locator("strong")).toHaveCSS("color", "rgb(201, 2, 22)");
+  await expect(slogan.locator("em")).toHaveCSS("color", "rgb(255, 179, 3)");
   await expect(page.getByRole("heading", { name: "Crie sua foto" })).toBeVisible();
   const fileInput = page.locator('input[type="file"]');
   await expect(fileInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
