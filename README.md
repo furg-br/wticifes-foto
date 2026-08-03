@@ -36,7 +36,7 @@ stateDiagram-v2
   approved --> expired: fim da publicação
 ```
 
-Uma imagem só entra no feed se tiver simultaneamente `status=approved`, consentimento registrado, ausência de remoção/exclusão e prazo de publicação futuro. Cada download valida o estado e `token_version` no Postgres. Revogação e remoção incrementam essa versão, bloqueiam novas URLs imediatamente e solicitam exclusão física. URLs da vitrine duram cinco minutos e nunca expõem caminho do Blob, ID administrativo, participante, hashes ou auditoria.
+Uma imagem só entra no feed se tiver simultaneamente `status=approved`, consentimento registrado, ausência de remoção/exclusão e prazo de publicação futuro. Cada download valida o estado e `token_version` no Postgres. Revogação e remoção incrementam essa versão, bloqueiam novas URLs imediatamente e solicitam exclusão física. URLs da vitrine duram cinco minutos e nunca expõem caminho do Blob, ID administrativo, participante, hashes ou auditoria. Na vitrine, cada foto ocupa no máximo 60% da altura da tela com `object-fit: contain`; essa regra não altera nem recorta o JPEG armazenado.
 
 A página inicial consulta `/api/estatisticas` para mostrar contagens agregadas de personalizações, participantes anônimos, atividade do dia no fuso de São Paulo e fotos ativas na vitrine. A resposta não contém hashes ou identificadores e usa cache público curto para evitar consultas repetidas ao Neon.
 

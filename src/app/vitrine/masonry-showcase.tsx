@@ -139,6 +139,7 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
               <figure className="showcase-tile" role="listitem" key={item.image.url}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
+                  className="showcase-photo"
                   src={item.image.url}
                   alt={`Foto ${item.photoIndex + 1} autorizada e aprovada para a vitrine do WTICIFES 2026`}
                   loading={item.photoIndex < 8 ? "eager" : "lazy"}

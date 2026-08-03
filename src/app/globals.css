@@ -323,6 +323,12 @@ button:disabled {
   height: auto;
 }
 
+.showcase-photo {
+  max-height: 60svh;
+  object-fit: contain;
+  background: #080808;
+}
+
 .showcase-qr-card {
   display: grid;
   padding: clamp(0.65rem, 1vw, 0.9rem);

@@ -85,6 +85,9 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
   await expect(mosaic).toBeVisible();
   await expect(mosaic.getByRole("listitem")).toHaveCount(7);
   await expect(mosaic).toHaveCSS("column-count", "4");
+  const firstPhoto = mosaic.locator(".showcase-photo").first();
+  await expect(firstPhoto).toHaveCSS("max-height", "432px");
+  await expect(firstPhoto).toHaveCSS("object-fit", "contain");
 
   const qrCard = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrCard).toBeVisible();
