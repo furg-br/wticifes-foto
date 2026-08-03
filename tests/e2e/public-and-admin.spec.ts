@@ -40,6 +40,10 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
   await page.goto("/vitrine");
   await expect(page.getByRole("button", { name: "Tela cheia" })).toBeVisible();
   await expect(page.getByAltText("WTICIFES Rio Grande do Sul 2026")).toBeVisible();
+  const qrLink = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
+  await expect(qrLink).toBeVisible();
+  expect(new URL((await qrLink.getAttribute("href")) ?? "", page.url()).pathname).toBe("/");
+  await expect(page.getByAltText("QR Code para criar sua foto do WTICIFES 2026")).toBeVisible();
 });
 
 test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) => {
@@ -60,4 +64,12 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
   await expect(mosaic).toBeVisible();
   await expect(mosaic.getByRole("listitem")).toHaveCount(6);
   await expect(mosaic).toHaveCSS("column-count", "4");
+
+  const qrCard = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
+  const cardBox = await qrCard.boundingBox();
+  const viewport = page.viewportSize();
+  expect(cardBox).not.toBeNull();
+  expect(viewport).not.toBeNull();
+  expect(Math.abs((cardBox?.x ?? 0) + (cardBox?.width ?? 0) / 2 - (viewport?.width ?? 0) / 2)).toBeLessThan(2);
+  expect(Math.abs((cardBox?.y ?? 0) + (cardBox?.height ?? 0) / 2 - (viewport?.height ?? 0) / 2)).toBeLessThan(2);
 });

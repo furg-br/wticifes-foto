@@ -11,7 +11,7 @@ const FEED_REFRESH_INTERVAL_MS = 60_000;
 const AUTO_SCROLL_INTERVAL_MS = 50;
 const AUTO_SCROLL_PAUSE_TICKS = 60;
 
-export function MasonryShowcase() {
+export function MasonryShowcase({ appUrl }: { appUrl: string }) {
   const [images, setImages] = useState<FeedImage[]>([]);
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
   const [feedFailed, setFeedFailed] = useState(false);
@@ -120,6 +120,21 @@ export function MasonryShowcase() {
           <p>{feedFailed ? "Aguardando reconexão…" : "Novas fotos aparecerão aqui em breve."}</p>
         </div>
       )}
+
+      <a
+        className="showcase-qr-card"
+        href={appUrl}
+        aria-label="Abrir a página para criar sua foto"
+        onMouseEnter={() => { interactionPaused.current = true; }}
+        onMouseLeave={() => { interactionPaused.current = false; }}
+        onFocus={() => { interactionPaused.current = true; }}
+        onBlur={() => { interactionPaused.current = false; }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/api/qrcode" alt="QR Code para criar sua foto do WTICIFES 2026" />
+        <strong>Crie sua foto</strong>
+        <span>Aponte a câmera</span>
+      </a>
     </section>
   );
 }
