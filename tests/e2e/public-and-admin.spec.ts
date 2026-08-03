@@ -77,12 +77,24 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
 });
 
 test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) => {
+  await page.route("**/test-showcase-*.svg", async (route) => {
+    const index = Number(route.request().url().match(/test-showcase-(\d+)\.svg/)?.[1] ?? 0);
+    const dimensions = [
+      { width: 800, height: 1200 },
+      { width: 900, height: 900 },
+      { width: 1200, height: 760 },
+    ][index % 3] ?? { width: 900, height: 900 };
+    await route.fulfill({
+      contentType: "image/svg+xml",
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="${dimensions.width}" height="${dimensions.height}"><rect width="100%" height="100%" fill="#679157"/></svg>`,
+    });
+  });
   await page.route("**/api/vitrine/feed", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
-        images: Array.from({ length: 6 }, (_, index) => ({
-          url: `/wticifes2026-logo.png?masonry=${index}`,
+        images: Array.from({ length: 15 }, (_, index) => ({
+          url: `/test-showcase-${index}.svg`,
           expires_at: "2099-01-01T00:00:00.000Z",
         })),
       }),
@@ -92,11 +104,19 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
   await page.goto("/vitrine");
   const mosaic = page.getByRole("list", { name: "Fotos aprovadas do WTICIFES 2026" });
   await expect(mosaic).toBeVisible();
-  await expect(mosaic.getByRole("listitem")).toHaveCount(7);
-  await expect(mosaic).toHaveCSS("column-count", "4");
-  const firstPhoto = mosaic.locator(".showcase-photo").first();
-  await expect(firstPhoto).toHaveCSS("max-height", "432px");
+  await expect(mosaic.getByRole("listitem")).toHaveCount(16);
+  await expect(mosaic).toHaveCSS("column-count", "5");
+  const photos = mosaic.locator(".showcase-photo");
+  await expect(photos).toHaveCount(15);
+  await photos.evaluateAll((images) => Promise.all(images.map((image) => (image as HTMLImageElement).decode())));
+  const firstPhoto = photos.first();
+  await expect(firstPhoto).toHaveCSS("max-height", "180px");
   await expect(firstPhoto).toHaveCSS("object-fit", "contain");
+  const photosInsideViewport = await photos.evaluateAll((images) => images.filter((image) => {
+    const bounds = image.getBoundingClientRect();
+    return bounds.top < window.innerHeight && bounds.bottom > 0;
+  }).length);
+  expect(photosInsideViewport).toBeGreaterThanOrEqual(14);
 
   const qrCard = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrCard).toBeVisible();
