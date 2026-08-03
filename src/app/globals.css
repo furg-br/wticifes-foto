@@ -324,22 +324,12 @@ button:disabled {
 }
 
 .showcase-qr-card {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
   display: grid;
-  width: clamp(10.5rem, 16vw, 18rem);
   padding: clamp(0.65rem, 1vw, 0.9rem);
   color: #111;
   text-align: center;
   text-decoration: none;
-  transform: translate(-50%, -50%);
-  border: 1px solid rgb(255 255 255 / 80%);
-  border-radius: clamp(0.8rem, 1.2vw, 1.15rem);
-  background: rgb(255 255 255 / 94%);
-  box-shadow: 0 1.2rem 4rem rgb(0 0 0 / 58%);
-  backdrop-filter: blur(0.45rem);
+  background: #fff;
 }
 
 .showcase-qr-card::before {
@@ -373,6 +363,21 @@ button:disabled {
   font-weight: 700;
 }
 
+.showcase-qr-tile {
+  border-color: rgb(255 255 255 / 80%);
+  background: #fff;
+}
+
+.showcase-empty-qr {
+  position: relative;
+  width: min(11rem, 45vw);
+  margin: 1.5rem auto 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 0.9rem;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 45%);
+}
+
 .showcase-empty {
   width: min(80vw, 44rem);
   margin: 0 auto;
@@ -400,10 +405,6 @@ button:disabled {
 @media (max-width: 44rem) {
   .showcase-masonry {
     columns: 2;
-  }
-
-  .showcase-qr-card {
-    width: clamp(8.5rem, 38vw, 10.5rem);
   }
 }
 

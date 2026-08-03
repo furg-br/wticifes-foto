@@ -204,7 +204,7 @@ Roteiro manual mínimo:
 3. Confirme que personalizar não coloca a imagem no feed.
 4. Marque consentimento; confirme `pending_review` e ausência no feed.
 5. Entre com admin permitido, tente mutação sem CSRF, aprove uma única imagem e confirme auditoria.
-6. Abra `/vitrine` em celular e tela cheia; confirme o mosaico masonry responsivo, proporções integrais, rolagem automática e QR Code central apontando para a página principal.
+6. Abra `/vitrine` em celular e tela cheia; confirme o mosaico masonry responsivo, proporções integrais, rolagem automática e QR Code permanente circulando como um cartão do mosaico e apontando para a página principal.
 7. Revogue; confirme sumiço no próximo refresh e falha do URL anterior.
 8. Rejeite/remova e confirme exclusão física ou retomada pelo cron.
 9. Reduza limites temporariamente e valide 409, 429, `Retry-After`, cooldown e `GENERATION_ENABLED=false`.

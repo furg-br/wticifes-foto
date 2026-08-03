@@ -62,14 +62,10 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
   await page.goto("/vitrine");
   const mosaic = page.getByRole("list", { name: "Fotos aprovadas do WTICIFES 2026" });
   await expect(mosaic).toBeVisible();
-  await expect(mosaic.getByRole("listitem")).toHaveCount(6);
+  await expect(mosaic.getByRole("listitem")).toHaveCount(7);
   await expect(mosaic).toHaveCSS("column-count", "4");
 
   const qrCard = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
-  const cardBox = await qrCard.boundingBox();
-  const viewport = page.viewportSize();
-  expect(cardBox).not.toBeNull();
-  expect(viewport).not.toBeNull();
-  expect(Math.abs((cardBox?.x ?? 0) + (cardBox?.width ?? 0) / 2 - (viewport?.width ?? 0) / 2)).toBeLessThan(2);
-  expect(Math.abs((cardBox?.y ?? 0) + (cardBox?.height ?? 0) / 2 - (viewport?.height ?? 0) / 2)).toBeLessThan(2);
+  await expect(qrCard).toBeVisible();
+  await expect(qrCard.locator("xpath=ancestor::figure")).toHaveClass(/showcase-qr-tile/);
 });
