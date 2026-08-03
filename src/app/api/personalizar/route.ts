@@ -171,10 +171,20 @@ export async function POST(request: Request): Promise<Response> {
     const recentDuplicateId = await abuse.duplicateImageId(contentHash);
     if (recentDuplicateId) {
       const recent = await findImageById(recentDuplicateId);
-      if (recent && canReuse(recent, participantHash, idempotencyHash)) {
-        return successResponse(recent, request, requestId, permit.remaining, true);
+      if (recent) {
+        const recovered = await recoverDuplicate(recent, participantHash, idempotencyHash);
+        if (recovered) {
+          await abuse.rememberIdempotency(idempotencyHash, recovered.id);
+          return successResponse(recovered, request, requestId, permit.remaining, true);
+        }
+        if (!recent.deletedAt && recent.status !== "removed" && recent.status !== "expired") {
+          throw new AppError(
+            "DUPLICATE_NOT_REUSABLE",
+            409,
+            "Esta fotografia pertence a outra sessão. Use o código salvo para revogar ou envie outro arquivo.",
+          );
+        }
       }
-      throw new AppError("DUPLICATE_WINDOW_ACTIVE", 409, "Esta fotografia foi processada recentemente.");
     }
 
     releases.push(await abuse.acquireLock("content", contentHash));

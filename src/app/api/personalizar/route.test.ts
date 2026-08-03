@@ -240,6 +240,40 @@ describe("POST /api/personalizar standalone", () => {
     expect(mocks.rememberIdempotency).toHaveBeenCalledWith(expect.any(String), legacy.id);
   });
 
+  it("reprocessa quando resta apenas um marcador Redis para uma imagem já apagada", async () => {
+    mocks.duplicateImageId.mockResolvedValueOnce("119fc3b2-061d-7ea0-b4de-4738900bd89f");
+    mocks.findImageById.mockResolvedValueOnce({
+      id: "119fc3b2-061d-7ea0-b4de-4738900bd89f",
+      status: "removed",
+      deletedAt: new Date("2026-08-02T12:00:00.000Z"),
+      requestKeyHash: "outro",
+      participantKeyHash: null,
+    });
+
+    const response = await POST(request({ ...body, participant_token: "participante-seguro-123" }));
+
+    expect(response.status).toBe(200);
+    expect(mocks.personalizePhoto).toHaveBeenCalledOnce();
+    expect(mocks.rememberDuplicate).toHaveBeenCalledOnce();
+  });
+
+  it("mantém o bloqueio quando o marcador Redis aponta para imagem ativa de outra sessão", async () => {
+    mocks.duplicateImageId.mockResolvedValueOnce("119fc3b2-061d-7ea0-b4de-4738900bd89f");
+    mocks.findImageById.mockResolvedValueOnce({
+      id: "119fc3b2-061d-7ea0-b4de-4738900bd89f",
+      status: "private",
+      deletedAt: null,
+      requestKeyHash: "outro",
+      participantKeyHash: "outra-identidade",
+      consentedAt: null,
+    });
+
+    const response = await POST(request({ ...body, participant_token: "participante-seguro-123" }));
+
+    expect(response.status).toBe(409);
+    expect(mocks.personalizePhoto).not.toHaveBeenCalled();
+  });
+
   it("retorna 409 quando o lock distribuído indica processamento concorrente", async () => {
     mocks.acquireLock.mockRejectedValueOnce(
       new AppError("DUPLICATE_IN_PROGRESS", 409, "em andamento"),
