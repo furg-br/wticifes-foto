@@ -87,12 +87,12 @@ Não execute `drizzle-kit push` em produção. Faça backup ou crie uma branch N
 | `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET` | Sim | OAuth App GitHub. |
 | `ADMIN_EMAIL_ALLOWLIST` | Sim | E-mails administrativos, separados por vírgula. |
 | `GENERATION_ENABLED` | Não | Kill switch; padrão `true`. |
-| `GLOBAL_MAX_PER_MINUTE/HOUR/DAY` | Não | Padrões 20/200/1000. |
-| `HARD_DAILY_LIMIT` | Não | Teto diário rígido; padrão 1000. |
+| `GLOBAL_MAX_PER_MINUTE/HOUR/DAY` | Não | Padrões 20/200/2000. |
+| `HARD_DAILY_LIMIT` | Não | Teto diário rígido; padrão 2000. |
 | `MAX_CONCURRENT_PROCESSING` | Não | Padrão 5. |
 | `DUPLICATE_WINDOW_SECONDS` | Não | Padrão 86400. |
 | `INVALID_ATTEMPT_BLOCK_SECONDS`, `INVALID_ATTEMPT_THRESHOLD` | Não | Padrões 1800 e 5. |
-| `PARTICIPANT_MAX_PER_HOUR/DAY/TOTAL` | Não | Padrões 2/3/10. |
+| `PARTICIPANT_MAX_PER_HOUR/DAY/TOTAL` | Não | Padrões 5/10/20. |
 | `BLOB_TTL_HOURS` | Não | Link privado inicial; padrão 24. |
 | `PRIVATE_RETENTION_HOURS` | Não | Padrão 24. |
 | `PENDING_REVIEW_RETENTION_HOURS` | Não | Padrão 72. |
