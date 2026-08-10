@@ -37,6 +37,7 @@ export const events = pgTable(
     showcaseEmptyText: varchar("showcase_empty_text", { length: 240 }).notNull(),
     logoPath: text("logo_path").notNull(),
     sideImagePath: text("side_image_path").notNull(),
+    faviconPath: text("favicon_path").notNull().default("builtin:wticifes-favicon"),
     configVersion: integer("config_version").notNull().default(1),
     createdBy: varchar("created_by", { length: 320 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

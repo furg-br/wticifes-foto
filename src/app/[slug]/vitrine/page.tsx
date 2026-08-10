@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const event = await resolvePublicEvent(slug);
-  return { title: event ? `Vitrine — ${event.name}` : "Vitrine" };
+  const favicon = event ? `/api/${event.slug}/asset/favicon?v=${event.configVersion}` : undefined;
+  return {
+    title: event ? `Vitrine — ${event.name}` : "Vitrine",
+    icons: favicon ? { icon: [{ url: favicon, type: "image/png" }], shortcut: [favicon] } : undefined,
+  };
 }
 
 export default async function ShowcasePage({ params }: { params: Promise<{ slug: string }> }) {

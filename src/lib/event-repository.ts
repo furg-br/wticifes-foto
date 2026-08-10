@@ -31,6 +31,10 @@ export async function findEventBySlug(slug: string): Promise<EventRecord | undef
   return getDatabase().query.events.findFirst({ where: eq(events.slug, slug.toLowerCase()) });
 }
 
+export async function findEventById(eventId: string): Promise<EventRecord | undefined> {
+  return getDatabase().query.events.findFirst({ where: eq(events.id, eventId) });
+}
+
 export async function findActiveEventBySlug(slug: string): Promise<EventRecord | undefined> {
   return getDatabase().query.events.findFirst({
     where: and(eq(events.slug, slug.toLowerCase()), eq(events.status, "active")),
@@ -162,6 +166,7 @@ export async function createEvent(input: CreateEventInput): Promise<EventRecord>
       showcaseEmptyText: "Novas fotos aparecerão aqui em breve.",
       logoPath: "builtin:wticifes-logo",
       sideImagePath: "builtin:wticifes-phrase",
+      faviconPath: "builtin:wticifes-favicon",
       createdBy: normalizeAdminEmail(input.createdBy),
     })
     .returning();
@@ -195,13 +200,17 @@ export async function updateEventSettings(eventId: string, input: EventSettingsI
 
 export async function updateEventAsset(
   eventId: string,
-  kind: "logo" | "side",
+  kind: "logo" | "side" | "favicon",
   pathname: string,
 ): Promise<EventRecord> {
   const [updated] = await getDatabase()
     .update(events)
     .set({
-      ...(kind === "logo" ? { logoPath: pathname } : { sideImagePath: pathname }),
+      ...(kind === "logo"
+        ? { logoPath: pathname }
+        : kind === "side"
+          ? { sideImagePath: pathname }
+          : { faviconPath: pathname }),
       configVersion: sql`${events.configVersion} + 1`,
       updatedAt: new Date(),
     })

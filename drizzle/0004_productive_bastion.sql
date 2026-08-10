@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "favicon_path" text DEFAULT 'builtin:wticifes-favicon' NOT NULL;

@@ -5,7 +5,7 @@ import { verifyImageGrant } from "@/lib/crypto-tokens";
 import { findImageById } from "@/lib/image-repository";
 import { readPersonalizedImage } from "@/lib/storage";
 import { canAppearInShowcase } from "@/lib/publication-state";
-import { hasEventAccess } from "@/lib/event-repository";
+import { findEventById, hasEventAccess } from "@/lib/event-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +45,9 @@ export async function GET(
       }
     }
 
+    const event = await findEventById(image.eventId);
+    if (!event) throw new AppError("DOWNLOAD_NOT_FOUND", 404, "A imagem não foi encontrada.");
+
     const result = await readPersonalizedImage(image.blobPath);
     if (!result || result.statusCode !== 200) {
       throw new AppError("DOWNLOAD_NOT_FOUND", 404, "A imagem não foi encontrada.");
@@ -54,7 +57,7 @@ export async function GET(
         "Cache-Control": "private, no-store, max-age=0",
         "Content-Type": "image/jpeg",
         "Content-Length": String(result.blob.size),
-        "Content-Disposition": 'inline; filename="wticifes-2026-eu-fui-tche.jpg"',
+        "Content-Disposition": `inline; filename="${event.slug}-eu-fui.jpg"`,
         "X-Content-Type-Options": "nosniff",
         "X-Request-Id": requestId,
       },

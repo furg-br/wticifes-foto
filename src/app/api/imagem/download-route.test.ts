@@ -1,16 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ find: vi.fn(), read: vi.fn(), admin: vi.fn() }));
+const mocks = vi.hoisted(() => ({ find: vi.fn(), findEvent: vi.fn(), access: vi.fn(), read: vi.fn(), admin: vi.fn() }));
 vi.mock("@/lib/image-repository", () => ({ findImageById: mocks.find }));
 vi.mock("@/lib/storage", () => ({ readPersonalizedImage: mocks.read }));
 vi.mock("@/lib/admin-auth", () => ({ requireAdmin: mocks.admin }));
+vi.mock("@/lib/event-repository", () => ({ findEventById: mocks.findEvent, hasEventAccess: mocks.access }));
 
 import { createImageGrant } from "@/lib/crypto-tokens";
 import { GET } from "./[token]/route";
 
 const id = "019fc3b2-061d-7ea0-b4de-4738900bd89f";
+const eventId = "00000000-0000-4000-8000-000000000001";
 const active = {
   id,
+  eventId,
   status: "approved",
   consentedAt: new Date(),
   removedAt: null,
@@ -24,6 +27,7 @@ const active = {
 beforeEach(() => {
   vi.stubEnv("DOWNLOAD_SIGNING_SECRET", "d".repeat(32));
   mocks.find.mockResolvedValue(active);
+  mocks.findEvent.mockResolvedValue({ id: eventId, slug: "mpu-2026" });
   mocks.read.mockResolvedValue({
     statusCode: 200,
     stream: new ReadableStream({ start(controller) { controller.enqueue(new Uint8Array([1, 2])); controller.close(); } }),
@@ -45,6 +49,7 @@ describe("download autorizado por estado", () => {
     const response = await GET(new Request(`https://foto.example.org/api/imagem/${token}`), context(token));
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("content-disposition")).toBe('inline; filename="mpu-2026-eu-fui.jpg"');
   });
 
   it("nega removida e versão revogada antes de acessar o Blob", async () => {

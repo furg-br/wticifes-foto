@@ -4,6 +4,7 @@ import { AppError } from "@/lib/app-error";
 const mocks = vi.hoisted(() => ({
   requireEventAdmin: vi.fn(),
   assertAdminCsrf: vi.fn(),
+  eventAssetPath: vi.fn(),
   loadAsset: vi.fn(),
   normalizeEventAsset: vi.fn(),
   updateEventAsset: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/lib/admin-auth", () => ({
   assertAdminCsrf: mocks.assertAdminCsrf,
 }));
 vi.mock("@/lib/event-assets", () => ({
+  eventAssetPath: mocks.eventAssetPath,
   loadAsset: mocks.loadAsset,
   normalizeEventAsset: mocks.normalizeEventAsset,
 }));
@@ -27,10 +29,14 @@ const event = {
   status: "draft",
   logoPath: "builtin:wticifes-logo",
   sideImagePath: "builtin:wticifes-phrase",
+  faviconPath: "builtin:wticifes-favicon",
 };
 
 beforeEach(() => {
   mocks.requireEventAdmin.mockResolvedValue({ admin: { email: "admin@example.org" }, event });
+  mocks.eventAssetPath.mockImplementation((record: typeof event, kind: "logo" | "side" | "favicon") => (
+    kind === "logo" ? record.logoPath : kind === "side" ? record.sideImagePath : record.faviconPath
+  ));
   mocks.loadAsset.mockResolvedValue(Buffer.from([137, 80, 78, 71]));
 });
 
@@ -62,6 +68,16 @@ describe("ativos visuais administrativos", () => {
 
     expect(response.status).toBe(403);
     expect(mocks.loadAsset).not.toHaveBeenCalled();
+  });
+
+  it("exibe o favicon configurado para o evento", async () => {
+    const response = await GET(
+      new Request("https://foto.example.org/api/admin/mpu-2026/asset?kind=favicon"),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.loadAsset).toHaveBeenCalledWith(event.faviconPath);
   });
 
   it("rejeita um tipo de ativo desconhecido", async () => {

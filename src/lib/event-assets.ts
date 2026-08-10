@@ -8,7 +8,16 @@ import { readEventAsset, storeEventAsset } from "./storage";
 const builtins: Record<string, string> = {
   "builtin:wticifes-logo": "wticifes2026-logo.png",
   "builtin:wticifes-phrase": "wticifes2026-phrase-brush.png",
+  "builtin:wticifes-favicon": "wticifes2026-favicon.png",
 };
+
+export type EventAssetKind = "logo" | "side" | "favicon";
+
+export function eventAssetPath(event: EventRecord, kind: EventAssetKind): string {
+  if (kind === "logo") return event.logoPath;
+  if (kind === "side") return event.sideImagePath;
+  return event.faviconPath;
+}
 
 export async function loadAsset(pathname: string): Promise<Buffer> {
   const builtin = builtins[pathname];
@@ -26,7 +35,7 @@ export async function loadEventBranding(event: EventRecord) {
 
 export async function normalizeEventAsset(
   eventId: string,
-  kind: "logo" | "side",
+  kind: EventAssetKind,
   file: File,
 ): Promise<string> {
   if (file.size < 1 || file.size > 2 * 1024 * 1024) {
@@ -46,7 +55,9 @@ export async function normalizeEventAsset(
   }
   const normalized = await image
     .rotate()
-    .resize({ width: 2000, height: 1000, fit: "inside", withoutEnlargement: true })
+    .resize(kind === "favicon"
+      ? { width: 512, height: 512, fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } }
+      : { width: 2000, height: 1000, fit: "inside", withoutEnlargement: true })
     .png({ compressionLevel: 9 })
     .toBuffer();
   return storeEventAsset(eventId, kind, normalized);

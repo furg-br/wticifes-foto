@@ -114,7 +114,7 @@ export async function readTransientUpload(pathname: string): Promise<Buffer> {
 
 export async function storeEventAsset(
   eventId: string,
-  kind: "logo" | "side",
+  kind: "logo" | "side" | "favicon",
   data: Buffer,
 ): Promise<string> {
   const pathname = `event-assets/${eventId}/${kind}/${randomUUID()}.png`;
@@ -129,7 +129,7 @@ export async function storeEventAsset(
 }
 
 export async function readEventAsset(pathname: string): Promise<Buffer> {
-  if (!/^event-assets\/[0-9a-f-]{36}\/(?:logo|side)\/[0-9a-f-]{36}\.png$/i.test(pathname)) {
+  if (!/^event-assets\/[0-9a-f-]{36}\/(?:logo|side|favicon)\/[0-9a-f-]{36}\.png$/i.test(pathname)) {
     throw new AppError("ASSET_NOT_FOUND", 404, "Ativo visual não encontrado.");
   }
   const result = await get(pathname, { access: "private", useCache: true });

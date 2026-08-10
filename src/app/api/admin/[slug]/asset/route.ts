@@ -1,22 +1,26 @@
 import { randomUUID } from "node:crypto";
 import { AppError, errorResponse } from "@/lib/app-error";
 import { assertAdminCsrf, requireEventAdmin } from "@/lib/admin-auth";
-import { loadAsset, normalizeEventAsset } from "@/lib/event-assets";
+import { eventAssetPath, loadAsset, normalizeEventAsset, type EventAssetKind } from "@/lib/event-assets";
 import { updateEventAsset } from "@/lib/event-repository";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+function isEventAssetKind(value: unknown): value is EventAssetKind {
+  return value === "logo" || value === "side" || value === "favicon";
+}
 
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const requestId = randomUUID();
   try {
     const { slug } = await context.params;
     const kind = new URL(request.url).searchParams.get("kind");
-    if (kind !== "logo" && kind !== "side") {
+    if (!isEventAssetKind(kind)) {
       throw new AppError("ASSET_NOT_FOUND", 404, "Ativo visual não encontrado.");
     }
     const { event } = await requireEventAdmin(slug);
-    const data = await loadAsset(kind === "logo" ? event.logoPath : event.sideImagePath);
+    const data = await loadAsset(eventAssetPath(event, kind));
     return new Response(new Uint8Array(data), {
       headers: {
         "Content-Type": "image/png",
@@ -39,7 +43,7 @@ export async function POST(request: Request, context: { params: Promise<{ slug: 
     const csrf = form.get("csrf_token");
     const kind = form.get("kind");
     const file = form.get("file");
-    if (typeof csrf !== "string" || (kind !== "logo" && kind !== "side") || !(file instanceof File)) {
+    if (typeof csrf !== "string" || !isEventAssetKind(kind) || !(file instanceof File)) {
       throw new AppError("INVALID_REQUEST", 400, "Envio de imagem inválido.");
     }
     assertAdminCsrf(request, csrf, admin.email);

@@ -18,6 +18,7 @@ export const DEFAULT_EVENT_RECORD: EventRecord = {
   showcaseEmptyText: "Novas fotos aparecerão aqui em breve.",
   logoPath: "builtin:wticifes-logo",
   sideImagePath: "builtin:wticifes-phrase",
+  faviconPath: "builtin:wticifes-favicon",
   configVersion: 1,
   createdBy: "migration",
   createdAt: migrationDate,

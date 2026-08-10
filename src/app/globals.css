@@ -275,7 +275,7 @@ a {
 
 .asset-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: 1rem;
 }
 
@@ -542,17 +542,6 @@ button:disabled {
   text-align: center;
   text-decoration: none;
   background: #fff;
-}
-
-.showcase-qr-card::before {
-  position: absolute;
-  top: 0;
-  right: 12%;
-  left: 12%;
-  height: 0.3rem;
-  content: "";
-  border-radius: 0 0 999px 999px;
-  background: linear-gradient(90deg, var(--green) 0 33%, var(--red) 33% 66%, var(--yellow) 66%);
 }
 
 .showcase-qr-card img {

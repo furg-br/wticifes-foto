@@ -21,6 +21,10 @@ test("a página do espaço apresenta upload direto", async ({ page }) => {
   });
 
   await page.goto("/wticifes-2026");
+  const iconUrls = await page.locator('link[rel="icon"], link[rel="shortcut icon"]').evaluateAll((links) =>
+    links.map((link) => (link as HTMLLinkElement).href),
+  );
+  expect(iconUrls.some((url) => new URL(url).pathname === "/api/wticifes-2026/asset/favicon")).toBe(true);
   const slogan = page.getByRole("heading", { name: "Eu fui, tchê!" });
   await expect(slogan).toBeVisible();
   await expect(page.getByRole("heading", { name: "Crie sua foto" })).toBeVisible();
@@ -60,15 +64,11 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
   await expect(page.getByAltText("WTICIFES 2026", { exact: true })).toBeVisible();
   const qrLink = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrLink).toBeVisible();
-  const qrStripe = await qrLink.evaluate((element) =>
-    window.getComputedStyle(element, "::before").backgroundImage,
-  );
-  const greenPosition = qrStripe.indexOf("rgb(103, 145, 87)");
-  const redPosition = qrStripe.indexOf("rgb(201, 2, 22)");
-  const yellowPosition = qrStripe.indexOf("rgb(255, 179, 3)");
-  expect(greenPosition).toBeGreaterThanOrEqual(0);
-  expect(redPosition).toBeGreaterThan(greenPosition);
-  expect(yellowPosition).toBeGreaterThan(redPosition);
+  const qrDecoration = await qrLink.evaluate((element) => ({
+    content: window.getComputedStyle(element, "::before").content,
+    background: window.getComputedStyle(element, "::before").backgroundImage,
+  }));
+  expect(qrDecoration).toEqual({ content: "none", background: "none" });
   expect(new URL((await qrLink.getAttribute("href")) ?? "", page.url()).pathname).toBe("/wticifes-2026");
   await expect(page.getByAltText("QR Code para criar sua foto de WTICIFES 2026")).toBeVisible();
 });

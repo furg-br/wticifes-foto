@@ -10,8 +10,13 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const event = await resolvePublicEvent(slug);
+  const favicon = event ? `/api/${event.slug}/asset/favicon?v=${event.configVersion}` : undefined;
   return event
-    ? { title: `${event.pageTitle} — ${event.name}`, description: event.pageSubtitle }
+    ? {
+        title: `${event.pageTitle} — ${event.name}`,
+        description: event.pageSubtitle,
+        icons: favicon ? { icon: [{ url: favicon, type: "image/png" }], shortcut: [favicon] } : undefined,
+      }
     : { title: "Página não encontrada" };
 }
 

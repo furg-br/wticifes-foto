@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import type { EventRecord } from "@/db/schema";
+import type { EventAssetKind } from "@/lib/event-assets";
 
 export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfToken: string }) {
   const [settings, setSettings] = useState({
@@ -22,7 +23,7 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
   const [message, setMessage] = useState("");
   const [assetMessage, setAssetMessage] = useState("");
   const [assetVersion, setAssetVersion] = useState(event.configVersion);
-  const [uploadingKind, setUploadingKind] = useState<"logo" | "side" | null>(null);
+  const [uploadingKind, setUploadingKind] = useState<EventAssetKind | null>(null);
   const [busy, setBusy] = useState(false);
 
   function field<K extends keyof typeof settings>(key: K, value: typeof settings[K]) {
@@ -49,7 +50,7 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
 
   const eventSlug = event.slug;
 
-  async function uploadAsset(kind: "logo" | "side", file?: File) {
+  async function uploadAsset(kind: EventAssetKind, file?: File) {
     if (!file) return;
     setBusy(true);
     setUploadingKind(kind);
@@ -63,7 +64,8 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
       const body = await response.json() as { version?: number; erro?: { mensagem?: string } };
       if (!response.ok) throw new Error(body.erro?.mensagem ?? "Não foi possível enviar a imagem.");
       if (typeof body.version === "number") setAssetVersion(body.version);
-      setAssetMessage(`${kind === "logo" ? "Logo" : "Imagem adicional"} atualizado com sucesso.`);
+      const assetName = kind === "logo" ? "Logo" : kind === "side" ? "Imagem adicional" : "Favicon";
+      setAssetMessage(`${assetName} atualizado com sucesso.`);
     } catch (error) {
       setAssetMessage(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
     } finally {
@@ -72,7 +74,7 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
     }
   }
 
-  function selectAsset(kind: "logo" | "side", input: HTMLInputElement) {
+  function selectAsset(kind: EventAssetKind, input: HTMLInputElement) {
     const file = input.files?.[0];
     input.value = "";
     void uploadAsset(kind, file);
@@ -94,6 +96,12 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
             <img src={`/api/admin/${eventSlug}/asset?kind=side&v=${assetVersion}`} alt="Imagem adicional atual" />
             <span className="asset-picker-action">{uploadingKind === "side" ? "Enviando imagem…" : "Selecionar nova imagem"}</span>
             <input className="asset-file-input" type="file" aria-label="Selecionar nova imagem adicional" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => selectAsset("side", e.currentTarget)} />
+          </label>
+          <label className="asset-picker">
+            <span>Favicon</span>
+            <img src={`/api/admin/${eventSlug}/asset?kind=favicon&v=${assetVersion}`} alt="Favicon atual" />
+            <span className="asset-picker-action">{uploadingKind === "favicon" ? "Enviando favicon…" : "Selecionar novo favicon"}</span>
+            <input className="asset-file-input" type="file" aria-label="Selecionar novo favicon" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => selectAsset("favicon", e.currentTarget)} />
           </label>
         </div>
         <small>PNG, WebP ou JPEG de até 2 MB. As imagens são normalizadas e armazenadas de forma privada.</small>

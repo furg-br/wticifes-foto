@@ -167,7 +167,7 @@ export function PhotoPersonalizer(props: PhotoPersonalizerProps) {
         <div className="personalizer-result">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={result.result_url} alt={`Sua foto personalizada com a marca de ${props.name}`} />
-          <a className="download-button" href={result.result_url} download>Baixar JPEG</a>
+          <a className="download-button" href={result.result_url} download={`${props.slug}-eu-fui.jpg`}>Baixar JPEG</a>
           <div className="revocation-code">
             <strong>Código de revogação</strong>
             <code>{`${result.image_id}:${result.revocation_token}`}</code>
