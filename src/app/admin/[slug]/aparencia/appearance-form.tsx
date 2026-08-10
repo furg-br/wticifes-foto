@@ -20,6 +20,9 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
     showcaseEmptyText: event.showcaseEmptyText,
   });
   const [message, setMessage] = useState("");
+  const [assetMessage, setAssetMessage] = useState("");
+  const [assetVersion, setAssetVersion] = useState(event.configVersion);
+  const [uploadingKind, setUploadingKind] = useState<"logo" | "side" | null>(null);
   const [busy, setBusy] = useState(false);
 
   function field<K extends keyof typeof settings>(key: K, value: typeof settings[K]) {
@@ -49,7 +52,8 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
   async function uploadAsset(kind: "logo" | "side", file?: File) {
     if (!file) return;
     setBusy(true);
-    setMessage("");
+    setUploadingKind(kind);
+    setAssetMessage("");
     try {
       const form = new FormData();
       form.set("kind", kind);
@@ -58,12 +62,20 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
       const response = await fetch(`/api/admin/${eventSlug}/asset`, { method: "POST", body: form });
       const body = await response.json() as { version?: number; erro?: { mensagem?: string } };
       if (!response.ok) throw new Error(body.erro?.mensagem ?? "Não foi possível enviar a imagem.");
-      setMessage(`Imagem atualizada. Versão ${body.version}.`);
-      window.setTimeout(() => window.location.reload(), 500);
+      if (typeof body.version === "number") setAssetVersion(body.version);
+      setAssetMessage(`${kind === "logo" ? "Logo" : "Imagem adicional"} atualizado com sucesso.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+      setAssetMessage(error instanceof Error ? error.message : "Não foi possível enviar a imagem.");
+    } finally {
+      setUploadingKind(null);
       setBusy(false);
     }
+  }
+
+  function selectAsset(kind: "logo" | "side", input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
+    void uploadAsset(kind, file);
   }
 
   return (
@@ -71,10 +83,21 @@ export function AppearanceForm({ event, csrfToken }: { event: EventRecord; csrfT
       <section className="asset-panel">
         <h2>Imagens da composição</h2>
         <div className="asset-grid">
-          <label><span>Logo</span><img src={`/api/${eventSlug}/asset/logo?v=${event.configVersion}`} alt="Logo atual" /><input type="file" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => void uploadAsset("logo", e.target.files?.[0])} /></label>
-          <label><span>Imagem ao lado</span><img src={`/api/${eventSlug}/asset/side?v=${event.configVersion}`} alt="Imagem adicional atual" /><input type="file" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => void uploadAsset("side", e.target.files?.[0])} /></label>
+          <label className="asset-picker">
+            <span>Logo</span>
+            <img src={`/api/admin/${eventSlug}/asset?kind=logo&v=${assetVersion}`} alt="Logo atual" />
+            <span className="asset-picker-action">{uploadingKind === "logo" ? "Enviando logo…" : "Selecionar novo logo"}</span>
+            <input className="asset-file-input" type="file" aria-label="Selecionar novo logo" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => selectAsset("logo", e.currentTarget)} />
+          </label>
+          <label className="asset-picker">
+            <span>Imagem ao lado</span>
+            <img src={`/api/admin/${eventSlug}/asset?kind=side&v=${assetVersion}`} alt="Imagem adicional atual" />
+            <span className="asset-picker-action">{uploadingKind === "side" ? "Enviando imagem…" : "Selecionar nova imagem"}</span>
+            <input className="asset-file-input" type="file" aria-label="Selecionar nova imagem adicional" accept="image/png,image/webp,image/jpeg" disabled={busy} onChange={(e) => selectAsset("side", e.currentTarget)} />
+          </label>
         </div>
         <small>PNG, WebP ou JPEG de até 2 MB. As imagens são normalizadas e armazenadas de forma privada.</small>
+        <p role="status" className="admin-message asset-message">{assetMessage}</p>
       </section>
       <form className="admin-form" onSubmit={save}>
         <h2>Identificação e publicação</h2>

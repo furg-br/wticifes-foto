@@ -1,11 +1,34 @@
 import { randomUUID } from "node:crypto";
 import { AppError, errorResponse } from "@/lib/app-error";
 import { assertAdminCsrf, requireEventAdmin } from "@/lib/admin-auth";
-import { normalizeEventAsset } from "@/lib/event-assets";
+import { loadAsset, normalizeEventAsset } from "@/lib/event-assets";
 import { updateEventAsset } from "@/lib/event-repository";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
+
+export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
+  const requestId = randomUUID();
+  try {
+    const { slug } = await context.params;
+    const kind = new URL(request.url).searchParams.get("kind");
+    if (kind !== "logo" && kind !== "side") {
+      throw new AppError("ASSET_NOT_FOUND", 404, "Ativo visual não encontrado.");
+    }
+    const { event } = await requireEventAdmin(slug);
+    const data = await loadAsset(kind === "logo" ? event.logoPath : event.sideImagePath);
+    return new Response(new Uint8Array(data), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Request-Id": requestId,
+      },
+    });
+  } catch (error) {
+    return errorResponse(error, requestId);
+  }
+}
 
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   const requestId = randomUUID();
