@@ -32,7 +32,17 @@ function participantToken(): string {
   }
 }
 
-export function PhotoPersonalizer() {
+interface PhotoPersonalizerProps {
+  slug: string;
+  name: string;
+  uploadTitle: string;
+  uploadLabel: string;
+  submitLabel: string;
+  consentText: string;
+  successMessage: string;
+}
+
+export function PhotoPersonalizer(props: PhotoPersonalizerProps) {
   const [file, setFile] = useState<File>();
   const [result, setResult] = useState<PersonalizationResult>();
   const [busy, setBusy] = useState(false);
@@ -56,13 +66,13 @@ export function PhotoPersonalizer() {
     try {
       const requestId = crypto.randomUUID();
       const anonymousParticipantToken = participantToken();
-      const blob = await upload(`incoming/${crypto.randomUUID()}.${extension}`, file, {
+      const blob = await upload(`incoming/${props.slug}/${crypto.randomUUID()}.${extension}`, file, {
         access: "private",
-        handleUploadUrl: "/api/upload",
+        handleUploadUrl: `/api/${props.slug}/upload`,
         clientPayload: JSON.stringify({ request_id: requestId }),
       });
       setMessage("Criando sua arte…");
-      const response = await fetch("/api/personalizar", {
+      const response = await fetch(`/api/${props.slug}/personalizar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -77,7 +87,7 @@ export function PhotoPersonalizer() {
       setResult(body);
       setMessage(body.reused
         ? "Esta foto já havia sido processada. Recuperamos a imagem e os controles de consentimento e revogação."
-        : "Pronto. Sua arte continua privada. Guarde o código de revogação antes de fechar a página.");
+        : props.successMessage);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Não foi possível personalizar a foto.");
     } finally {
@@ -89,7 +99,7 @@ export function PhotoPersonalizer() {
     if (!result || !consent) return;
     setBusy(true);
     try {
-      const response = await fetch("/api/vitrine/submeter", {
+      const response = await fetch(`/api/${props.slug}/vitrine/submeter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_id: result.image_id, consent_token: result.consent_token }),
@@ -109,7 +119,7 @@ export function PhotoPersonalizer() {
     if (!window.confirm("Revogar o consentimento e apagar a imagem?")) return;
     setBusy(true);
     try {
-      const response = await fetch("/api/vitrine/revogar", {
+      const response = await fetch(`/api/${props.slug}/vitrine/revogar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_id: imageId, revocation_token: revocationToken }),
@@ -144,19 +154,19 @@ export function PhotoPersonalizer() {
 
   return (
     <section className="personalizer" aria-labelledby="personalizer-title">
-      <h2 id="personalizer-title">Crie sua foto</h2>
+      <h2 id="personalizer-title">{props.uploadTitle}</h2>
       <form onSubmit={personalize}>
         <label className="file-picker">
-          Escolha uma foto JPG, PNG ou WebP (até 12 MB)
+          {props.uploadLabel}
           <input type="file" accept="image/jpeg,image/png,image/webp" required onChange={(event) => setFile(event.target.files?.[0])} />
         </label>
-        <button disabled={busy || !file} type="submit">{busy ? "Processando…" : "Personalizar foto"}</button>
+        <button disabled={busy || !file} type="submit">{busy ? "Processando…" : props.submitLabel}</button>
       </form>
       <p role="status" className="personalizer-message">{message}</p>
       {result && (
         <div className="personalizer-result">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={result.result_url} alt="Sua foto personalizada com a marca do WTICIFES 2026" />
+          <img src={result.result_url} alt={`Sua foto personalizada com a marca de ${props.name}`} />
           <a className="download-button" href={result.result_url} download>Baixar JPEG</a>
           <div className="revocation-code">
             <strong>Código de revogação</strong>
@@ -165,7 +175,7 @@ export function PhotoPersonalizer() {
           </div>
           {!submitted && (
             <div className="consent-box">
-              <label><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> Autorizo a exibição pública desta imagem nas telas e na vitrine do WTICIFES 2026, sujeita à revisão humana.</label>
+              <label><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /> {props.consentText}</label>
               <button type="button" disabled={busy || !consent} onClick={submitForReview}>Enviar para análise</button>
             </div>
           )}

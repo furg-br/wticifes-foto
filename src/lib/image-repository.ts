@@ -6,6 +6,8 @@ import type { ImageStatus } from "./constants";
 
 export interface CreatePrivateImageInput {
   id: string;
+  eventId: string;
+  eventConfigVersion: number;
   blobPath: string;
   contentHash: string;
   participantKeyHash?: string;
@@ -30,7 +32,7 @@ export interface PublicUsageStatistics {
   showcasePhotos: number;
 }
 
-export async function getPublicUsageStatistics(now = new Date()): Promise<PublicUsageStatistics> {
+export async function getPublicUsageStatistics(eventId: string, now = new Date()): Promise<PublicUsageStatistics> {
   const result = await getDatabase().execute(sql<PublicUsageStatistics>`
     SELECT
       count(*)::int AS "totalPersonalizations",
@@ -48,6 +50,7 @@ export async function getPublicUsageStatistics(now = new Date()): Promise<Public
           AND publication_expires_at > ${now}
       )::int AS "showcasePhotos"
     FROM images
+    WHERE event_id = ${eventId}::uuid
   `);
   const row = result.rows[0];
 
@@ -75,17 +78,20 @@ export async function createPrivateImage(input: CreatePrivateImageInput): Promis
   return created;
 }
 
-export async function findImageById(id: string): Promise<ImageRecord | undefined> {
-  return getDatabase().query.images.findFirst({ where: eq(images.id, id) });
+export async function findImageById(id: string, eventId?: string): Promise<ImageRecord | undefined> {
+  return getDatabase().query.images.findFirst({
+    where: eventId ? and(eq(images.id, id), eq(images.eventId, eventId)) : eq(images.id, id),
+  });
 }
 
-export async function findActiveByContentHash(contentHash: string): Promise<ImageRecord | undefined> {
+export async function findActiveByContentHash(eventId: string, contentHash: string): Promise<ImageRecord | undefined> {
   return getDatabase().query.images.findFirst({
-    where: and(eq(images.contentHash, contentHash), isNull(images.deletedAt)),
+    where: and(eq(images.eventId, eventId), eq(images.contentHash, contentHash), isNull(images.deletedAt)),
   });
 }
 
 export async function claimUnidentifiedPrivateImage(
+  eventId: string,
   imageId: string,
   participantHash: string,
 ): Promise<ImageRecord | undefined> {
@@ -95,6 +101,7 @@ export async function claimUnidentifiedPrivateImage(
     .where(
       and(
         eq(images.id, imageId),
+        eq(images.eventId, eventId),
         eq(images.status, "private"),
         isNull(images.participantKeyHash),
         isNull(images.consentedAt),
@@ -105,23 +112,32 @@ export async function claimUnidentifiedPrivateImage(
   return claimed;
 }
 
-export async function findByRequestKey(requestKey: string): Promise<ImageRecord | undefined> {
-  return getDatabase().query.images.findFirst({ where: eq(images.requestKeyHash, requestKey) });
+export async function findByRequestKey(eventId: string, requestKey: string): Promise<ImageRecord | undefined> {
+  return getDatabase().query.images.findFirst({
+    where: and(eq(images.eventId, eventId), eq(images.requestKeyHash, requestKey)),
+  });
 }
 
-export async function isParticipantBlocked(participantHash: string): Promise<boolean> {
+export async function isParticipantBlocked(eventId: string, participantHash: string): Promise<boolean> {
   const record = await getDatabase().query.blockedParticipants.findFirst({
     columns: { participantKeyHash: true },
-    where: eq(blockedParticipants.participantKeyHash, participantHash),
+    where: and(
+      eq(blockedParticipants.eventId, eventId),
+      eq(blockedParticipants.participantKeyHash, participantHash),
+    ),
   });
   return Boolean(record);
 }
 
-export async function countParticipantImages(participantHash: string): Promise<number> {
-  return getDatabase().$count(images, eq(images.participantKeyHash, participantHash));
+export async function countParticipantImages(eventId: string, participantHash: string): Promise<number> {
+  return getDatabase().$count(
+    images,
+    and(eq(images.eventId, eventId), eq(images.participantKeyHash, participantHash)),
+  );
 }
 
 export async function submitConsent(
+  eventId: string,
   imageId: string,
   tokenHash: string,
   consentVersion: string,
@@ -139,6 +155,7 @@ export async function submitConsent(
     .where(
       and(
         eq(images.id, imageId),
+        eq(images.eventId, eventId),
         eq(images.status, "private"),
         eq(images.consentTokenHash, tokenHash),
         gt(images.consentTokenExpiresAt, now),
@@ -149,7 +166,7 @@ export async function submitConsent(
     .returning();
   if (changed) return { image: changed, changed: true };
 
-  const existing = await findImageById(imageId);
+  const existing = await findImageById(imageId, eventId);
   if (
     existing &&
     existing.consentTokenHash === tokenHash &&
@@ -162,6 +179,7 @@ export async function submitConsent(
 }
 
 interface AuditTransitionInput {
+  eventId: string;
   imageId: string;
   expectedStatuses: ImageStatus[];
   newStatus: ImageStatus;
@@ -181,6 +199,7 @@ export async function auditedTransition(input: AuditTransitionInput): Promise<Im
       SELECT id, status
       FROM images
       WHERE id = ${input.imageId}::uuid
+        AND event_id = ${input.eventId}::uuid
         AND status = ANY(${sql.raw(`ARRAY[${input.expectedStatuses.map((s) => `'${s}'::image_status`).join(",")}]`)})
         AND deleted_at IS NULL
       FOR UPDATE
@@ -201,12 +220,13 @@ export async function auditedTransition(input: AuditTransitionInput): Promise<Im
       RETURNING i.*, p.status AS old_status
     ), audit AS (
       INSERT INTO moderation_audit
-        (id, image_id, moderator_id, action, previous_status, new_status, reason, created_at, request_id)
-      SELECT ${randomUUID()}::uuid, id, ${input.moderatorId}, ${input.action}, old_status,
+        (id, event_id, image_id, moderator_id, action, previous_status, new_status, reason, created_at, request_id)
+      SELECT ${randomUUID()}::uuid, event_id, id, ${input.moderatorId}, ${input.action}, old_status,
              ${input.newStatus}::image_status, ${input.reason ?? null}, ${now}, ${input.requestId}
       FROM changed
     )
-    SELECT id, blob_path AS "blobPath", content_hash AS "contentHash", status,
+    SELECT id, event_id AS "eventId", event_config_version AS "eventConfigVersion",
+      blob_path AS "blobPath", content_hash AS "contentHash", status,
       created_at AS "createdAt", expires_at AS "expiresAt", consented_at AS "consentedAt",
       consent_version AS "consentVersion", consent_token_hash AS "consentTokenHash",
       consent_token_expires_at AS "consentTokenExpiresAt", consent_token_used_at AS "consentTokenUsedAt",
@@ -223,16 +243,18 @@ export async function auditedTransition(input: AuditTransitionInput): Promise<Im
 }
 
 export async function revokeImage(
+  eventId: string,
   imageId: string,
   revocationHash: string,
   requestId: string,
   now = new Date(),
 ): Promise<TransitionResult | undefined> {
-  const existing = await findImageById(imageId);
+  const existing = await findImageById(imageId, eventId);
   if (!existing || existing.revocationTokenHash !== revocationHash) return undefined;
   if (existing.status === "removed") return { image: existing, changed: false };
   if (existing.deletedAt) return { image: existing, changed: false };
   const changed = await auditedTransition({
+    eventId,
     imageId,
     expectedStatuses: ["private", "pending_review", "approved", "rejected"],
     newStatus: "removed",
@@ -249,18 +271,19 @@ export async function markDeleted(imageId: string, now = new Date()): Promise<vo
   await getDatabase().update(images).set({ deletedAt: now }).where(eq(images.id, imageId));
 }
 
-export async function listModeration(status: ImageStatus, limit = 50): Promise<ImageRecord[]> {
+export async function listModeration(eventId: string, status: ImageStatus, limit = 50): Promise<ImageRecord[]> {
   return getDatabase().query.images.findMany({
-    where: and(eq(images.status, status), isNull(images.deletedAt)),
+    where: and(eq(images.eventId, eventId), eq(images.status, status), isNull(images.deletedAt)),
     orderBy: [desc(images.safetyPriority), desc(images.submittedAt), desc(images.createdAt)],
     limit,
   });
 }
 
-export async function listShowcaseCandidates(now: Date, limit: number): Promise<ImageRecord[]> {
+export async function listShowcaseCandidates(eventId: string, now: Date, limit: number): Promise<ImageRecord[]> {
   return getDatabase().query.images.findMany({
     where: and(
       eq(images.status, "approved"),
+      eq(images.eventId, eventId),
       isNotNull(images.consentedAt),
       isNull(images.removedAt),
       isNull(images.deletedAt),
@@ -271,12 +294,12 @@ export async function listShowcaseCandidates(now: Date, limit: number): Promise<
   });
 }
 
-export async function markShowcaseDisplayed(ids: string[], now = new Date()): Promise<void> {
+export async function markShowcaseDisplayed(eventId: string, ids: string[], now = new Date()): Promise<void> {
   if (ids.length === 0) return;
   await getDatabase()
     .update(images)
     .set({ lastDisplayedAt: now, displayCount: sql`${images.displayCount} + 1` })
-    .where(inArray(images.id, ids));
+    .where(and(eq(images.eventId, eventId), inArray(images.id, ids)));
 }
 
 export async function blockParticipantFromImage(
@@ -288,6 +311,7 @@ export async function blockParticipantFromImage(
   await getDatabase()
     .insert(blockedParticipants)
     .values({
+      eventId: image.eventId,
       participantKeyHash: image.participantKeyHash,
       blockedBy: moderatorId,
       reason: reason ?? null,
@@ -297,6 +321,7 @@ export async function blockParticipantFromImage(
 }
 
 export async function auditedBlockParticipant(
+  eventId: string,
   imageId: string,
   moderatorId: string,
   requestId: string,
@@ -308,6 +333,7 @@ export async function auditedBlockParticipant(
       SELECT id, status, participant_key_hash
       FROM images
       WHERE id = ${imageId}::uuid
+        AND event_id = ${eventId}::uuid
         AND status IN ('pending_review'::image_status, 'approved'::image_status)
         AND participant_key_hash IS NOT NULL
         AND deleted_at IS NULL
@@ -323,17 +349,18 @@ export async function auditedBlockParticipant(
       RETURNING i.*, p.status AS old_status, p.participant_key_hash AS blocked_hash
     ), blocked AS (
       INSERT INTO blocked_participants
-        (participant_key_hash, blocked_at, blocked_by, reason, source_image_id)
-      SELECT blocked_hash, ${now}, ${moderatorId}, ${reason ?? null}, id FROM changed
-      ON CONFLICT (participant_key_hash) DO NOTHING
+        (event_id, participant_key_hash, blocked_at, blocked_by, reason, source_image_id)
+      SELECT event_id, blocked_hash, ${now}, ${moderatorId}, ${reason ?? null}, id FROM changed
+      ON CONFLICT (event_id, participant_key_hash) DO NOTHING
     ), audit AS (
       INSERT INTO moderation_audit
-        (id, image_id, moderator_id, action, previous_status, new_status, reason, created_at, request_id)
-      SELECT ${randomUUID()}::uuid, id, ${moderatorId}, 'block_participant', old_status,
+        (id, event_id, image_id, moderator_id, action, previous_status, new_status, reason, created_at, request_id)
+      SELECT ${randomUUID()}::uuid, event_id, id, ${moderatorId}, 'block_participant', old_status,
         'removed'::image_status, ${reason ?? null}, ${now}, ${requestId}
       FROM changed
     )
-    SELECT id, blob_path AS "blobPath", content_hash AS "contentHash", status,
+    SELECT id, event_id AS "eventId", event_config_version AS "eventConfigVersion",
+      blob_path AS "blobPath", content_hash AS "contentHash", status,
       created_at AS "createdAt", expires_at AS "expiresAt", consented_at AS "consentedAt",
       consent_version AS "consentVersion", consent_token_hash AS "consentTokenHash",
       consent_token_expires_at AS "consentTokenExpiresAt", consent_token_used_at AS "consentTokenUsedAt",
@@ -399,21 +426,27 @@ export async function listActiveStorageRecords(): Promise<Array<{ id: string; bl
     .where(isNull(images.deletedAt));
 }
 
-export async function queueStats(now = new Date()): Promise<{ pending: number; nearExpiry: number }> {
+export async function queueStats(eventId: string, now = new Date()): Promise<{ pending: number; nearExpiry: number }> {
   const near = new Date(now.getTime() + 6 * 60 * 60 * 1000);
   const [pending, nearExpiry] = await Promise.all([
-    getDatabase().$count(images, and(eq(images.status, "pending_review"), isNull(images.deletedAt))),
+    getDatabase().$count(images, and(eq(images.eventId, eventId), eq(images.status, "pending_review"), isNull(images.deletedAt))),
     getDatabase().$count(
       images,
-      and(eq(images.status, "pending_review"), isNull(images.deletedAt), lt(images.expiresAt, near)),
+      and(eq(images.eventId, eventId), eq(images.status, "pending_review"), isNull(images.deletedAt), lt(images.expiresAt, near)),
     ),
   ]);
   return { pending, nearExpiry };
 }
 
-export async function listAudit(imageId?: string, limit = 100) {
+export async function listAudit(eventId?: string, imageId?: string, limit = 100) {
   return getDatabase().query.moderationAudit.findMany({
-    where: imageId ? eq(moderationAudit.imageId, imageId) : undefined,
+    where: eventId && imageId
+      ? and(eq(moderationAudit.eventId, eventId), eq(moderationAudit.imageId, imageId))
+      : eventId
+        ? eq(moderationAudit.eventId, eventId)
+        : imageId
+          ? eq(moderationAudit.imageId, imageId)
+          : undefined,
     orderBy: [desc(moderationAudit.createdAt)],
     limit,
   });

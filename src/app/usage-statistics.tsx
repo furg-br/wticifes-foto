@@ -13,20 +13,20 @@ interface PublicStatistics {
 const REFRESH_INTERVAL_MS = 60_000;
 const number = new Intl.NumberFormat("pt-BR");
 
-export function UsageStatistics() {
+export function UsageStatistics({ slug, name }: { slug: string; name: string }) {
   const [statistics, setStatistics] = useState<PublicStatistics>();
   const [failed, setFailed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/estatisticas");
+      const response = await fetch(`/api/${slug}/estatisticas`);
       if (!response.ok) throw new Error("statistics unavailable");
       setStatistics((await response.json()) as PublicStatistics);
       setFailed(false);
     } catch {
       setFailed(true);
     }
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void refresh(), 0);
@@ -48,7 +48,7 @@ export function UsageStatistics() {
   return (
     <section className="usage-statistics" aria-labelledby="statistics-title" aria-live="polite">
       <div className="usage-statistics-heading">
-        <h2 id="statistics-title">WTICIFES em números</h2>
+        <h2 id="statistics-title">{name} em números</h2>
         <p>Contagens agregadas e anônimas</p>
       </div>
       <dl>

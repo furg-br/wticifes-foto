@@ -5,6 +5,7 @@ import { verifyImageGrant } from "@/lib/crypto-tokens";
 import { findImageById } from "@/lib/image-repository";
 import { readPersonalizedImage } from "@/lib/storage";
 import { canAppearInShowcase } from "@/lib/publication-state";
+import { hasEventAccess } from "@/lib/event-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,12 +19,21 @@ export async function GET(
   try {
     const { token } = await context.params;
     const grant = verifyImageGrant(token);
-    if (grant.audience === "moderation") await requireAdmin();
-
     const image = await findImageById(grant.imageId);
     const now = new Date();
-    if (!image || image.deletedAt || image.tokenVersion !== grant.tokenVersion) {
+    if (
+      !image ||
+      image.deletedAt ||
+      image.tokenVersion !== grant.tokenVersion ||
+      (grant.eventId && image.eventId !== grant.eventId)
+    ) {
       throw new AppError("DOWNLOAD_NOT_FOUND", 404, "A imagem não foi encontrada.");
+    }
+    if (grant.audience === "moderation") {
+      const admin = await requireAdmin();
+      if (!(await hasEventAccess(admin, image.eventId))) {
+        throw new AppError("DOWNLOAD_NOT_FOUND", 404, "A imagem não foi encontrada.");
+      }
     }
     if (grant.audience === "public") {
       if (!canAppearInShowcase(image, now)) {

@@ -15,7 +15,7 @@ export function randomMasonryPosition(itemCount: number, randomValue = Math.rand
   return Math.min(itemCount, Math.floor(randomValue * (itemCount + 1)));
 }
 
-function QrLink({ appUrl, className = "" }: { appUrl: string; className?: string }) {
+function QrLink({ appUrl, slug, name, className = "" }: { appUrl: string; slug: string; name: string; className?: string }) {
   return (
     <a
       className={`showcase-qr-card ${className}`.trim()}
@@ -23,14 +23,21 @@ function QrLink({ appUrl, className = "" }: { appUrl: string; className?: string
       aria-label="Abrir a página para criar sua foto"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/api/qrcode" alt="QR Code para criar sua foto do WTICIFES 2026" />
+      <img src={`/api/${slug}/qrcode`} alt={`QR Code para criar sua foto de ${name}`} />
       <strong>Crie sua foto</strong>
       <span>Aponte a câmera</span>
     </a>
   );
 }
 
-export function MasonryShowcase({ appUrl }: { appUrl: string }) {
+interface ShowcaseProps {
+  appUrl: string;
+  slug: string;
+  name: string;
+  emptyText: string;
+}
+
+export function MasonryShowcase({ appUrl, slug, name, emptyText }: ShowcaseProps) {
   const [images, setImages] = useState<FeedImage[]>([]);
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set());
   const [feedFailed, setFeedFailed] = useState(false);
@@ -55,7 +62,7 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/vitrine/feed", { cache: "no-store" });
+      const response = await fetch(`/api/${slug}/vitrine/feed`, { cache: "no-store" });
       if (!response.ok) throw new Error("feed unavailable");
 
       const body = (await response.json()) as { images?: FeedImage[] };
@@ -67,7 +74,7 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
     } catch {
       setFeedFailed(true);
     }
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void refresh(), 0);
@@ -115,7 +122,7 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
   return (
     <section ref={root} className="showcase" aria-live="polite">
       <div className="showcase-brand">
-        <span>WTICIFES 2026</span>
+        <span>{name}</span>
         <button onClick={fullScreen}>Tela cheia</button>
       </div>
 
@@ -130,10 +137,10 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
             if (!event.currentTarget.contains(event.relatedTarget)) interactionPaused.current = false;
           }}
         >
-          <div className="showcase-masonry" role="list" aria-label="Fotos aprovadas do WTICIFES 2026">
+          <div className="showcase-masonry" role="list" aria-label={`Fotos aprovadas de ${name}`}>
             {masonryItems.map((item) => item.kind === "qrcode" ? (
               <figure className="showcase-tile showcase-qr-tile" role="listitem" key="showcase-qrcode">
-                <QrLink appUrl={appUrl} />
+                <QrLink appUrl={appUrl} slug={slug} name={name} />
               </figure>
             ) : (
               <figure className="showcase-tile" role="listitem" key={item.image.url}>
@@ -141,7 +148,7 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
                 <img
                   className="showcase-photo"
                   src={item.image.url}
-                  alt={`Foto ${item.photoIndex + 1} autorizada e aprovada para a vitrine do WTICIFES 2026`}
+                  alt={`Foto ${item.photoIndex + 1} autorizada e aprovada para a vitrine de ${name}`}
                   loading={item.photoIndex < 8 ? "eager" : "lazy"}
                   onError={() => hideFailedImage(item.image.url)}
                 />
@@ -152,9 +159,9 @@ export function MasonryShowcase({ appUrl }: { appUrl: string }) {
       ) : (
         <div className="showcase-empty">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/wticifes2026-logo.png" alt="WTICIFES Rio Grande do Sul 2026" />
-          <p>{feedFailed ? "Aguardando reconexão…" : "Novas fotos aparecerão aqui em breve."}</p>
-          <QrLink appUrl={appUrl} className="showcase-empty-qr" />
+          <img src={`/api/${slug}/asset/logo`} alt={name} />
+          <p>{feedFailed ? "Aguardando reconexão…" : emptyText}</p>
+          <QrLink appUrl={appUrl} slug={slug} name={name} className="showcase-empty-qr" />
         </div>
       )}
     </section>

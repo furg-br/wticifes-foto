@@ -58,10 +58,11 @@ vi.mock("@/lib/rate-limit", () => ({
 import { POST } from "./route";
 import { AppError } from "@/lib/app-error";
 import { participantKeyHash, requestKeyHash } from "@/lib/crypto-tokens";
+import { DEFAULT_EVENT_ID } from "@/db/schema";
 
 const id = "019fc3b2-061d-7ea0-b4de-4738900bd89f";
 const body = {
-  upload_path: `incoming/${id}.jpg`,
+  upload_path: `incoming/wticifes-2026/${id}.jpg`,
   mime_type: "image/jpeg",
   request_id: id,
 };
@@ -147,7 +148,7 @@ describe("POST /api/personalizar standalone", () => {
     expect(mocks.assertUploadReservation).toHaveBeenCalledOnce();
     expect(mocks.readTransientUpload).toHaveBeenCalledWith(body.upload_path);
     expect(mocks.deletePersonalizedImage).toHaveBeenCalledWith(body.upload_path);
-    expect(mocks.personalizePhoto).toHaveBeenCalledWith(Buffer.from("imagem"), "image/jpeg");
+    expect(mocks.personalizePhoto).toHaveBeenCalledWith(Buffer.from("imagem"), "image/jpeg", expect.objectContaining({ logo: expect.any(Buffer), sideImage: expect.any(Buffer) }));
   });
 
   it("rejeita payload desconhecido antes de ler qualquer arquivo", async () => {
@@ -168,7 +169,7 @@ describe("POST /api/personalizar standalone", () => {
       id,
       status: "private",
       deletedAt: null,
-      requestKeyHash: requestKeyHash(id),
+      requestKeyHash: requestKeyHash(id, DEFAULT_EVENT_ID),
       participantKeyHash: null,
       tokenVersion: 1,
       expiresAt: new Date("2026-08-03T12:00:00.000Z"),
@@ -199,7 +200,7 @@ describe("POST /api/personalizar standalone", () => {
       status: "private",
       deletedAt: null,
       requestKeyHash: "outro",
-      participantKeyHash: participantKeyHash(participantToken),
+      participantKeyHash: participantKeyHash(participantToken, DEFAULT_EVENT_ID),
       consentedAt: null,
       tokenVersion: 1,
       expiresAt: new Date("2026-08-03T12:00:00.000Z"),
@@ -215,7 +216,7 @@ describe("POST /api/personalizar standalone", () => {
 
   it("vincula imagem privada antiga sem consentimento ao navegador que reapresenta o arquivo", async () => {
     const participantToken = "participante-seguro-123";
-    const participantHash = participantKeyHash(participantToken);
+    const participantHash = participantKeyHash(participantToken, DEFAULT_EVENT_ID);
     const legacy = {
       id: "119fc3b2-061d-7ea0-b4de-4738900bd89f",
       status: "private",
@@ -236,7 +237,7 @@ describe("POST /api/personalizar standalone", () => {
     const json = (await response.json()) as Record<string, unknown>;
     expect(response.status).toBe(200);
     expect(json).toMatchObject({ success: true, reused: true });
-    expect(mocks.claimUnidentifiedPrivateImage).toHaveBeenCalledWith(legacy.id, participantHash);
+    expect(mocks.claimUnidentifiedPrivateImage).toHaveBeenCalledWith(DEFAULT_EVENT_ID, legacy.id, participantHash);
     expect(mocks.rememberIdempotency).toHaveBeenCalledWith(expect.any(String), legacy.id);
   });
 
@@ -287,7 +288,7 @@ describe("POST /api/personalizar standalone", () => {
     const response = await POST(request({ ...body, participant_token: "participante-seguro-123" }));
     expect(response.status).toBe(200);
     expect(mocks.enter).toHaveBeenCalledWith("network-hash", expect.stringMatching(/^[a-f0-9]{64}$/));
-    expect(mocks.countParticipantImages).toHaveBeenCalledWith(expect.stringMatching(/^[a-f0-9]{64}$/));
+    expect(mocks.countParticipantImages).toHaveBeenCalledWith(DEFAULT_EVENT_ID, expect.stringMatching(/^[a-f0-9]{64}$/));
     expect(mocks.assertParticipantTotal).toHaveBeenCalledWith(expect.any(String), 0);
   });
 });

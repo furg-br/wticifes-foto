@@ -1,6 +1,28 @@
-# WTICIFES 2026 — Eu fui, tchê!
+# Personalização de fotos para eventos
 
-Aplicação web standalone, pronta para Vercel, que recebe uma fotografia e acrescenta de forma determinística o logo oficial do WTICIFES 2026 e a frase **“Eu fui, tchê!”**. Cada personalização usa somente Sharp e ativos estáticos aprovados, sem chamada a IA. Não há integração com ChatGPT nem aprovação automática.
+Serviço multi-evento pronto para Vercel. Cada espaço possui endereço público curto, identidade visual, textos, vitrine, QR Code e fila de moderação isolados. O WTICIFES 2026 continua cadastrado como espaço inicial em `/wticifes-2026`. Cada personalização usa somente Sharp e ativos aprovados, sem chamada a IA ou aprovação automática.
+
+## Endereços e administração
+
+As páginas públicas usam o slug diretamente na raiz:
+
+```text
+/{slug}
+/{slug}/vitrine
+```
+
+Toda a administração fica reservada sob `/admin`. O administrador geral cadastra espaços e define seus administradores. Administradores associados podem alterar as duas imagens da composição, textos e status, além de moderar somente suas próprias imagens.
+
+```text
+/admin
+/admin/novo
+/admin/{slug}
+/admin/{slug}/aparencia
+/admin/{slug}/moderacao
+/admin/{slug}/pessoas
+```
+
+O acesso continua usando GitHub OAuth. `ADMIN_EMAIL_ALLOWLIST` serve como bootstrap dos administradores gerais; administradores de espaços ficam no Postgres. Convites expiram em 72 horas, são vinculados ao e-mail confirmado pelo GitHub e têm uso único. Como a implantação atual não possui provedor de e-mail, o painel fornece o link para compartilhamento seguro pelo administrador geral.
 
 ## Arquitetura
 

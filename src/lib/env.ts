@@ -68,8 +68,7 @@ export function isAdminAuthConfigured(): boolean {
   return Boolean(
     (process.env.AUTH_SECRET?.trim().length ?? 0) >= 32 &&
       process.env.AUTH_GITHUB_ID?.trim() &&
-      process.env.AUTH_GITHUB_SECRET?.trim() &&
-      getAdminAllowlist().size > 0,
+      process.env.AUTH_GITHUB_SECRET?.trim(),
   );
 }
 

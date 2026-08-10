@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-test("a aplicação standalone apresenta upload direto", async ({ page }) => {
+test("a página do espaço apresenta upload direto", async ({ page }) => {
   const cspErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error" && message.text().includes("Content Security Policy")) {
       cspErrors.push(message.text());
     }
   });
-  await page.route("**/api/estatisticas", async (route) => {
+  await page.route("**/api/wticifes-2026/estatisticas", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -20,12 +20,9 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
     });
   });
 
-  await page.goto("/");
+  await page.goto("/wticifes-2026");
   const slogan = page.getByRole("heading", { name: "Eu fui, tchê!" });
   await expect(slogan).toBeVisible();
-  await expect(slogan.locator("span")).toHaveCSS("color", "rgb(103, 145, 87)");
-  await expect(slogan.locator("strong")).toHaveCSS("color", "rgb(201, 2, 22)");
-  await expect(slogan.locator("em")).toHaveCSS("color", "rgb(255, 179, 3)");
   await expect(page.getByRole("heading", { name: "Crie sua foto" })).toBeVisible();
   const fileInput = page.locator('input[type="file"]');
   await expect(fileInput).toHaveAttribute("accept", "image/jpeg,image/png,image/webp");
@@ -43,7 +40,7 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
   await expect(page.getByText(/Envie uma fotografia diretamente por esta página/i)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "OpenAPI" })).toHaveCount(0);
   await expect(page.getByText(/GPT Action|ChatGPT/i)).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "WTICIFES em números" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "WTICIFES 2026 em números" })).toBeVisible();
   await expect(page.getByText("321", { exact: true })).toBeVisible();
   await expect(page.getByText("198", { exact: true })).toBeVisible();
   await expect(page.getByText("87", { exact: true })).toBeVisible();
@@ -54,13 +51,13 @@ test("a aplicação standalone apresenta upload direto", async ({ page }) => {
 test("admin falha fechado sem OAuth completo", async ({ page }) => {
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Painel indisponível" })).toBeVisible();
-  await expect(page.getByText(/acesso permanece bloqueado/i)).toBeVisible();
+  await expect(page.getByText(/autenticação administrativa não está configurada/i)).toBeVisible();
 });
 
 test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
-  await page.goto("/vitrine");
+  await page.goto("/wticifes-2026/vitrine");
   await expect(page.getByRole("button", { name: "Tela cheia" })).toBeVisible();
-  await expect(page.getByAltText("WTICIFES Rio Grande do Sul 2026")).toBeVisible();
+  await expect(page.getByAltText("WTICIFES 2026", { exact: true })).toBeVisible();
   const qrLink = page.getByRole("link", { name: "Abrir a página para criar sua foto" });
   await expect(qrLink).toBeVisible();
   const qrStripe = await qrLink.evaluate((element) =>
@@ -72,8 +69,8 @@ test("vitrine tem fallback e controle de tela cheia", async ({ page }) => {
   expect(greenPosition).toBeGreaterThanOrEqual(0);
   expect(redPosition).toBeGreaterThan(greenPosition);
   expect(yellowPosition).toBeGreaterThan(redPosition);
-  expect(new URL((await qrLink.getAttribute("href")) ?? "", page.url()).pathname).toBe("/");
-  await expect(page.getByAltText("QR Code para criar sua foto do WTICIFES 2026")).toBeVisible();
+  expect(new URL((await qrLink.getAttribute("href")) ?? "", page.url()).pathname).toBe("/wticifes-2026");
+  await expect(page.getByAltText("QR Code para criar sua foto de WTICIFES 2026")).toBeVisible();
 });
 
 test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) => {
@@ -90,7 +87,7 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
       body: `<svg xmlns="http://www.w3.org/2000/svg" width="${dimensions.width}" height="${dimensions.height}"><rect width="100%" height="100%" fill="#679157"/></svg>`,
     });
   });
-  await page.route("**/api/vitrine/feed", async (route) => {
+  await page.route("**/api/wticifes-2026/vitrine/feed", async (route) => {
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({
@@ -102,8 +99,8 @@ test("vitrine distribui fotos aprovadas em mosaico masonry", async ({ page }) =>
     });
   });
 
-  await page.goto("/vitrine");
-  const mosaic = page.getByRole("list", { name: "Fotos aprovadas do WTICIFES 2026" });
+  await page.goto("/wticifes-2026/vitrine");
+  const mosaic = page.getByRole("list", { name: "Fotos aprovadas de WTICIFES 2026" });
   await expect(mosaic).toBeVisible();
   await expect(mosaic.getByRole("listitem")).toHaveCount(13);
   await expect(mosaic).toHaveCSS("column-count", "5");

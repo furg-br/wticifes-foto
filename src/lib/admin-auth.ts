@@ -1,13 +1,21 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { auth } from "@/auth";
+import type { AdminUserRecord, EventRecord } from "@/db/schema";
 import { AppError } from "./app-error";
 import { getAdminAllowlist, getAdminAuditSecret, getPublicAppUrl, isAdminAuthConfigured } from "./env";
+import {
+  ensureAdminUser,
+  findAccessibleEvent,
+  findAdminUserByEmail,
+  hasAnyEventAccess,
+  normalizeAdminEmail,
+} from "./event-repository";
 
 export function isAllowedAdminEmail(email: string | null | undefined): email is string {
-  return Boolean(email && getAdminAllowlist().has(email.trim().toLowerCase()));
+  return Boolean(email && getAdminAllowlist().has(normalizeAdminEmail(email)));
 }
 
-export async function requireAdmin(): Promise<{ email: string }> {
+async function sessionEmail(): Promise<string> {
   if (!isAdminAuthConfigured()) {
     throw new AppError("ADMIN_AUTH_NOT_CONFIGURED", 503, "A autenticação administrativa não está configurada.");
   }
@@ -19,10 +27,41 @@ export async function requireAdmin(): Promise<{ email: string }> {
       cause: error,
     });
   }
-  if (!isAllowedAdminEmail(session?.user?.email)) {
+  const email = session?.user?.email;
+  if (!email) throw new AppError("ADMIN_FORBIDDEN", 403, "Acesso administrativo não autorizado.");
+  return normalizeAdminEmail(email);
+}
+
+export async function requireAdminIdentity(): Promise<AdminUserRecord> {
+  const email = await sessionEmail();
+  const bootstrap = isAllowedAdminEmail(email);
+  const existing = await findAdminUserByEmail(email);
+  if (existing?.active) return existing;
+  if (bootstrap) return ensureAdminUser(email, undefined, true);
+  throw new AppError("ADMIN_FORBIDDEN", 403, "Acesso administrativo não autorizado.");
+}
+
+export async function requireAdmin(): Promise<AdminUserRecord> {
+  const user = await requireAdminIdentity();
+  if (!(await hasAnyEventAccess(user))) {
     throw new AppError("ADMIN_FORBIDDEN", 403, "Acesso administrativo não autorizado.");
   }
-  return { email: session.user.email.trim().toLowerCase() };
+  return user;
+}
+
+export async function requireSuperAdmin(): Promise<AdminUserRecord> {
+  const user = await requireAdmin();
+  if (!user.isSuperAdmin) {
+    throw new AppError("ADMIN_FORBIDDEN", 403, "Esta operação exige administração geral.");
+  }
+  return user;
+}
+
+export async function requireEventAdmin(slug: string): Promise<{ admin: AdminUserRecord; event: EventRecord }> {
+  const admin = await requireAdmin();
+  const event = await findAccessibleEvent(admin, slug);
+  if (!event) throw new AppError("ADMIN_FORBIDDEN", 403, "Você não administra este espaço.");
+  return { admin, event };
 }
 
 function csrfSignature(encoded: string, email: string): string {

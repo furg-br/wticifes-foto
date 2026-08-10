@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { standalonePersonalizeRequestSchema } from "./schema";
 
 const valid = {
-  upload_path: "incoming/019fc3b2-061d-7ea0-b4de-4738900bd89f.jpg",
+  upload_path: "incoming/wticifes-2026/019fc3b2-061d-7ea0-b4de-4738900bd89f.jpg",
   mime_type: "image/jpeg",
   request_id: "019fc3b2-061d-7ea0-b4de-4738900bd89f",
 } as const;

@@ -1,9 +1,9 @@
 {
   "name": "wticifes-foto",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Aplicação standalone para personalizar fotografias do WTICIFES 2026.",
+  "description": "Serviço multi-evento para personalizar, moderar e exibir fotografias.",
   "engines": {
     "node": ">=20.9.0"
   },

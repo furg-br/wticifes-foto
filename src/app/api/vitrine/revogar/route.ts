@@ -7,21 +7,24 @@ import { deletePersonalizedImage } from "@/lib/storage";
 import { assertPublicSameOrigin } from "@/lib/request-security";
 import { safeRequestId } from "@/lib/request-id";
 import { DistributedAbuseProtection, rateLimitIdentity } from "@/lib/rate-limit";
+import type { EventRecord } from "@/db/schema";
+import { DEFAULT_EVENT_RECORD } from "@/lib/default-event";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-export async function POST(request: Request): Promise<Response> {
+export async function handleEventRevoke(request: Request, event: EventRecord): Promise<Response> {
   const requestId = safeRequestId(request.headers);
   let identityHash: string | undefined;
   try {
     assertPublicSameOrigin(request);
     identityHash = rateLimitIdentity(request.headers);
-    await new DistributedAbuseProtection().assertNotBlocked(identityHash);
+    await new DistributedAbuseProtection(undefined, event.id).assertNotBlocked(identityHash);
     const parsed = revokeFromShowcaseSchema.safeParse(await readJsonRequest(request));
     if (!parsed.success) throw new AppError("INVALID_REQUEST", 400, "Dados de revogação inválidos.");
     const result = await revokeImage(
+      event.id,
       parsed.data.image_id,
       sha256(parsed.data.revocation_token),
       requestId,
@@ -52,8 +55,12 @@ export async function POST(request: Request): Promise<Response> {
     );
   } catch (error) {
     if (identityHash && error instanceof AppError && [400, 403].includes(error.status)) {
-      await new DistributedAbuseProtection().registerInvalid(identityHash).catch(() => undefined);
+      await new DistributedAbuseProtection(undefined, event.id).registerInvalid(identityHash).catch(() => undefined);
     }
     return errorResponse(error, requestId);
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return handleEventRevoke(request, DEFAULT_EVENT_RECORD);
 }

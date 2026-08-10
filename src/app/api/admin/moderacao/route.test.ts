@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/app-error";
 
 const mocks = vi.hoisted(() => ({
-  requireAdmin: vi.fn(),
+  requireEventAdmin: vi.fn(),
   csrf: vi.fn(),
   find: vi.fn(),
   transition: vi.fn(),
@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   markDeleted: vi.fn(),
   deleteBlob: vi.fn(),
 }));
-vi.mock("@/lib/admin-auth", () => ({ requireAdmin: mocks.requireAdmin, assertAdminCsrf: mocks.csrf }));
+vi.mock("@/lib/admin-auth", () => ({ requireEventAdmin: mocks.requireEventAdmin, assertAdminCsrf: mocks.csrf }));
 vi.mock("@/lib/image-repository", () => ({
   findImageById: mocks.find,
   auditedTransition: mocks.transition,
@@ -24,6 +24,7 @@ vi.mock("@/lib/storage", () => ({ deletePersonalizedImage: mocks.deleteBlob }));
 import { POST } from "./route";
 
 const id = "019fc3b2-061d-7ea0-b4de-4738900bd89f";
+const eventId = "00000000-0000-4000-8000-000000000001";
 const pending = {
   id,
   status: "pending_review",
@@ -43,7 +44,7 @@ function request(action = "approve") {
 
 beforeEach(() => {
   vi.stubEnv("RATE_LIMIT_SECRET", "r".repeat(32));
-  mocks.requireAdmin.mockResolvedValue({ email: "admin@example.org" });
+  mocks.requireEventAdmin.mockResolvedValue({ admin: { email: "admin@example.org" }, event: { id: eventId } });
   mocks.find.mockResolvedValue(pending);
   mocks.transition.mockResolvedValue({ ...pending, status: "approved" });
   mocks.deleteBlob.mockResolvedValue(undefined);
@@ -56,7 +57,7 @@ afterEach(() => {
 
 describe("moderação administrativa", () => {
   it("nega usuário fora da allowlist e mutação sem CSRF", async () => {
-    mocks.requireAdmin.mockRejectedValueOnce(new AppError("ADMIN_FORBIDDEN", 403, "negado"));
+    mocks.requireEventAdmin.mockRejectedValueOnce(new AppError("ADMIN_FORBIDDEN", 403, "negado"));
     expect((await POST(request())).status).toBe(403);
     expect(mocks.find).not.toHaveBeenCalled();
 

@@ -1,5 +1,5 @@
 import { AppError, errorResponse } from "@/lib/app-error";
-import { assertAdminCsrf, requireAdmin } from "@/lib/admin-auth";
+import { assertAdminCsrf, requireEventAdmin } from "@/lib/admin-auth";
 import { moderatorIdentifier } from "@/lib/crypto-tokens";
 import { getRetention } from "@/lib/env";
 import {
@@ -12,20 +12,21 @@ import { readJsonRequest } from "@/lib/request";
 import { moderationActionSchema } from "@/lib/schema";
 import { deletePersonalizedImage } from "@/lib/storage";
 import { safeRequestId } from "@/lib/request-id";
+import { DEFAULT_EVENT_SLUG } from "@/db/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-export async function POST(request: Request): Promise<Response> {
+export async function handleEventModeration(request: Request, slug: string): Promise<Response> {
   const requestId = safeRequestId(request.headers);
   try {
-    const admin = await requireAdmin();
+    const { admin, event } = await requireEventAdmin(slug);
     const parsed = moderationActionSchema.safeParse(await readJsonRequest(request));
     if (!parsed.success) throw new AppError("INVALID_REQUEST", 400, "Operação administrativa inválida.");
     assertAdminCsrf(request, parsed.data.csrf_token, admin.email);
 
-    const current = await findImageById(parsed.data.image_id);
+    const current = await findImageById(parsed.data.image_id, event.id);
     if (!current || current.deletedAt) throw new AppError("IMAGE_NOT_FOUND", 404, "Imagem não encontrada.");
     if (parsed.data.action === "block_participant" && !current.participantKeyHash) {
       throw new AppError("PARTICIPANT_UNAVAILABLE", 409, "A imagem não possui participante identificável.");
@@ -50,6 +51,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const changed = parsed.data.action === "block_participant"
       ? await auditedBlockParticipant(
+          event.id,
           current.id,
           moderatorId,
           requestId,
@@ -57,6 +59,7 @@ export async function POST(request: Request): Promise<Response> {
           now,
         )
       : await auditedTransition({
+          eventId: event.id,
           imageId: current.id,
           expectedStatuses: expected,
           newStatus: nextStatus,
@@ -97,4 +100,8 @@ export async function POST(request: Request): Promise<Response> {
   } catch (error) {
     return errorResponse(error, requestId);
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return handleEventModeration(request, DEFAULT_EVENT_SLUG);
 }

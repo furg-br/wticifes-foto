@@ -25,7 +25,7 @@ beforeEach(() => {
   mocks.reserve.mockResolvedValue(undefined);
   mocks.handleUpload.mockImplementation(async (options) => {
     const tokenOptions = await options.onBeforeGenerateToken(
-      `incoming/${id}.jpg`,
+      `incoming/wticifes-2026/${id}.jpg`,
       JSON.stringify({ request_id: id }),
       false,
     );
@@ -46,7 +46,7 @@ describe("autorização de upload privado", () => {
     expect(mocks.reserve).toHaveBeenCalledWith(
       "network-hash",
       expect.stringMatching(/^[a-f0-9]{64}$/),
-      `incoming/${id}.jpg`,
+      `incoming/wticifes-2026/${id}.jpg`,
     );
   });
 

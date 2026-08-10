@@ -1,16 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { AppError, errorResponse } from "@/lib/app-error";
 import { getPublicUsageStatistics } from "@/lib/image-repository";
+import type { EventRecord } from "@/db/schema";
+import { DEFAULT_EVENT_RECORD } from "@/lib/default-event";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 10;
 
-export async function GET(): Promise<Response> {
+export async function handleEventStatistics(event: EventRecord): Promise<Response> {
   const requestId = randomUUID();
 
   try {
-    const statistics = await getPublicUsageStatistics();
+    const statistics = await getPublicUsageStatistics(event.id);
     return Response.json(
       {
         total_personalizations: statistics.totalPersonalizations,
@@ -35,4 +37,8 @@ export async function GET(): Promise<Response> {
       requestId,
     );
   }
+}
+
+export async function GET(): Promise<Response> {
+  return handleEventStatistics(DEFAULT_EVENT_RECORD);
 }

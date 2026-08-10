@@ -49,6 +49,20 @@ main {
   height: auto;
 }
 
+.event-title {
+  margin-top: clamp(1rem, 3vw, 2rem);
+  color: var(--text);
+  font-size: clamp(2.5rem, 7vw, 5.5rem);
+}
+
+.event-subtitle {
+  max-width: 42rem;
+  margin: 1rem auto 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.55;
+}
+
 .eyebrow {
   margin: 2rem 0 0.5rem;
   color: var(--muted);
@@ -137,6 +151,166 @@ a {
   align-items: end;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.admin-header-actions,
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.button-link {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1rem;
+  color: #111;
+  font-weight: 800;
+  text-decoration: none;
+  border-radius: 0.55rem;
+  background: var(--green);
+}
+
+.admin-event-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.admin-event-card,
+.admin-callout,
+.asset-panel,
+.people-layout > section {
+  padding: 1.25rem;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.admin-event-card h2 {
+  margin-bottom: 0.25rem;
+}
+
+.admin-event-card p {
+  margin-top: 0;
+  color: var(--muted);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 999px;
+}
+
+.status-active { color: #d9ffd1; border-color: var(--green); }
+.status-suspended { color: #ffe2a6; border-color: var(--yellow); }
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.admin-summary-grid article {
+  display: grid;
+  gap: 0.4rem;
+  padding: 1.2rem;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.admin-summary-grid strong { color: var(--yellow); font-size: 2rem; }
+.admin-summary-grid span { color: var(--muted); }
+
+.admin-form-shell { max-width: 52rem; }
+
+.admin-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1rem;
+  background: var(--surface);
+}
+
+.admin-form label,
+.asset-grid label {
+  display: grid;
+  gap: 0.45rem;
+  color: var(--muted);
+}
+
+.admin-form input,
+.admin-form textarea,
+.admin-form select {
+  width: 100%;
+  padding: 0.75rem;
+  color: var(--text);
+  font: inherit;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 0.55rem;
+  background: #111;
+}
+
+.admin-form textarea { min-height: 6rem; resize: vertical; }
+.admin-form small { color: var(--muted); }
+
+.settings-layout,
+.people-layout {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.asset-grid img {
+  width: 100%;
+  height: 12rem;
+  object-fit: contain;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: #080808;
+}
+
+.people-list { display: grid; gap: 0.75rem; }
+.people-list article { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem; border: 1px solid rgb(255 255 255 / 10%); border-radius: 0.7rem; }
+.people-list article div { display: grid; gap: 0.25rem; }
+.people-list span { color: var(--muted); }
+.invitation-link { display: grid; gap: 0.75rem; padding: 1rem; border-radius: 0.75rem; background: #090909; }
+.invitation-link code { overflow-wrap: anywhere; color: var(--yellow); }
+
+.auth-card {
+  width: min(100%, 34rem);
+  padding: clamp(1.5rem, 5vw, 3rem);
+  text-align: center;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 1.5rem;
+  background: var(--surface);
+}
+
+.auth-card h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); }
+.auth-card p { color: var(--muted); line-height: 1.6; }
+
+@media (max-width: 42rem) {
+  .admin-header { align-items: flex-start; flex-direction: column; }
+  .asset-grid { grid-template-columns: 1fr; }
+  .people-list article { align-items: stretch; flex-direction: column; }
 }
 
 .admin-header h1 {

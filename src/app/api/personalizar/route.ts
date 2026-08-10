@@ -23,9 +23,12 @@ import { readJsonRequest } from "@/lib/request";
 import { standalonePersonalizeRequestSchema } from "@/lib/schema";
 import { deletePersonalizedImage, readTransientUpload, storePersonalizedImage } from "@/lib/storage";
 import type { ImageRecord } from "@/db/schema";
+import type { EventRecord } from "@/db/schema";
 import { getContentSafetyProvider } from "@/lib/content-safety";
 import { assertPublicSameOrigin } from "@/lib/request-security";
 import { safeRequestId } from "@/lib/request-id";
+import { loadEventBranding } from "@/lib/event-assets";
+import { DEFAULT_EVENT_RECORD } from "@/lib/default-event";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +41,7 @@ function canReuse(image: ImageRecord, participantHash: string | undefined, reque
 }
 
 async function recoverDuplicate(
+  eventId: string,
   image: ImageRecord,
   participantHash: string | undefined,
   requestHash: string,
@@ -49,7 +53,7 @@ async function recoverDuplicate(
     image.status === "private" &&
     !image.consentedAt
   ) {
-    return claimUnidentifiedPrivateImage(image.id, participantHash);
+    return claimUnidentifiedPrivateImage(eventId, image.id, participantHash);
   }
   return undefined;
 }
@@ -61,10 +65,11 @@ function successResponse(
   remaining: number,
   reused: boolean,
 ) {
-  const consentToken = deriveBoundToken(image.id, "consent");
-  const revocationToken = deriveBoundToken(image.id, "revocation");
+  const consentToken = deriveBoundToken(image.id, "consent", image.eventId);
+  const revocationToken = deriveBoundToken(image.id, "revocation", image.eventId);
   const grant = createImageGrant({
     imageId: image.id,
+    eventId: image.eventId,
     tokenVersion: image.tokenVersion,
     audience: "result",
     expiresAt: image.expiresAt,
@@ -91,7 +96,7 @@ function successResponse(
   );
 }
 
-export async function POST(request: Request): Promise<Response> {
+export async function handleEventPersonalize(request: Request, event: EventRecord): Promise<Response> {
   let requestId = safeRequestId(request.headers);
   const startedAt = Date.now();
   let identityHash: string | undefined;
@@ -112,26 +117,29 @@ export async function POST(request: Request): Promise<Response> {
     if (!standalone.success) {
       throw new AppError("INVALID_REQUEST", 400, "Envie exatamente uma fotografia JPG, PNG ou WebP.");
     }
+    if (!standalone.data.upload_path.startsWith(`incoming/${event.slug}/`)) {
+      throw new AppError("UPLOAD_NOT_AUTHORIZED", 403, "O upload não pertence a este espaço.");
+    }
     const suppliedRequestId = standalone.data.request_id;
     requestId = suppliedRequestId;
 
     identityHash = rateLimitIdentity(request.headers);
     const suppliedParticipantToken = standalone.data.participant_token;
     const participantHash = suppliedParticipantToken
-      ? participantKeyHash(suppliedParticipantToken)
+      ? participantKeyHash(suppliedParticipantToken, event.id)
       : undefined;
-    const idempotencyHash = requestKeyHash(suppliedRequestId);
-    const abuse = new DistributedAbuseProtection();
+    const idempotencyHash = requestKeyHash(suppliedRequestId, event.id);
+    const abuse = new DistributedAbuseProtection(undefined, event.id);
     permit = await abuse.enter(identityHash, participantHash);
 
     const cachedRequestImageId = await abuse.idempotentImageId(idempotencyHash);
     if (cachedRequestImageId) {
-      const cached = await findImageById(cachedRequestImageId);
+      const cached = await findImageById(cachedRequestImageId, event.id);
       if (cached && canReuse(cached, participantHash, idempotencyHash)) {
         return successResponse(cached, request, requestId, permit.remaining, true);
       }
     }
-    const existingRequest = await findByRequestKey(idempotencyHash);
+    const existingRequest = await findByRequestKey(event.id, idempotencyHash);
     if (existingRequest && canReuse(existingRequest, participantHash, idempotencyHash)) {
       return successResponse(existingRequest, request, requestId, permit.remaining, true);
     }
@@ -140,10 +148,10 @@ export async function POST(request: Request): Promise<Response> {
     transientUpload = { pathname: standalone.data.upload_path, requestHash: idempotencyHash, abuse };
     if (participantHash) {
       releases.push(await abuse.acquireLock("participant", participantHash));
-      if (await isParticipantBlocked(participantHash)) {
+      if (await isParticipantBlocked(event.id, participantHash)) {
         throw new AppError("PARTICIPANT_BLOCKED", 403, "Este participante não pode enviar novas imagens.");
       }
-      await abuse.assertParticipantTotal(participantHash, await countParticipantImages(participantHash));
+      await abuse.assertParticipantTotal(participantHash, await countParticipantImages(event.id, participantHash));
     }
 
     releases.push(await abuse.acquireLock("request", idempotencyHash));
@@ -155,9 +163,9 @@ export async function POST(request: Request): Promise<Response> {
       transientUpload = undefined;
     }
     const contentHash = sha256(source);
-    let duplicate = await findActiveByContentHash(contentHash);
+    let duplicate = await findActiveByContentHash(event.id, contentHash);
     if (duplicate) {
-      const recovered = await recoverDuplicate(duplicate, participantHash, idempotencyHash);
+      const recovered = await recoverDuplicate(event.id, duplicate, participantHash, idempotencyHash);
       if (!recovered) {
         throw new AppError(
           "DUPLICATE_NOT_REUSABLE",
@@ -170,9 +178,9 @@ export async function POST(request: Request): Promise<Response> {
     }
     const recentDuplicateId = await abuse.duplicateImageId(contentHash);
     if (recentDuplicateId) {
-      const recent = await findImageById(recentDuplicateId);
+      const recent = await findImageById(recentDuplicateId, event.id);
       if (recent) {
-        const recovered = await recoverDuplicate(recent, participantHash, idempotencyHash);
+        const recovered = await recoverDuplicate(event.id, recent, participantHash, idempotencyHash);
         if (recovered) {
           await abuse.rememberIdempotency(idempotencyHash, recovered.id);
           return successResponse(recovered, request, requestId, permit.remaining, true);
@@ -188,9 +196,9 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     releases.push(await abuse.acquireLock("content", contentHash));
-    duplicate = await findActiveByContentHash(contentHash);
+    duplicate = await findActiveByContentHash(event.id, contentHash);
     if (duplicate) {
-      const recovered = await recoverDuplicate(duplicate, participantHash, idempotencyHash);
+      const recovered = await recoverDuplicate(event.id, duplicate, participantHash, idempotencyHash);
       if (!recovered) {
         throw new AppError(
           "DUPLICATE_NOT_REUSABLE",
@@ -202,16 +210,18 @@ export async function POST(request: Request): Promise<Response> {
       return successResponse(recovered, request, requestId, permit.remaining, true);
     }
 
-    const personalized = await personalizePhoto(source, mimeType);
+    const personalized = await personalizePhoto(source, mimeType, await loadEventBranding(event));
     const safety = await getContentSafetyProvider().assess(personalized.data);
-    const stored = await storePersonalizedImage(personalized.data);
+    const stored = await storePersonalizedImage(personalized.data, new Date(), event.id);
     const imageId = randomUUID();
-    const consentToken = deriveBoundToken(imageId, "consent");
-    const revocationToken = deriveBoundToken(imageId, "revocation");
+    const consentToken = deriveBoundToken(imageId, "consent", event.id);
+    const revocationToken = deriveBoundToken(imageId, "revocation", event.id);
     let image: ImageRecord;
     try {
       image = await createPrivateImage({
         id: imageId,
+        eventId: event.id,
+        eventConfigVersion: event.configVersion,
         blobPath: stored.pathname,
         contentHash,
         ...(participantHash ? { participantKeyHash: participantHash } : {}),
@@ -233,6 +243,7 @@ export async function POST(request: Request): Promise<Response> {
     console.info(JSON.stringify({
       level: "info",
       event: "personalization_completed",
+      eventId: event.id,
       requestId,
       imageId: image.id,
       durationMs: Date.now() - startedAt,
@@ -248,7 +259,7 @@ export async function POST(request: Request): Promise<Response> {
       error instanceof AppError &&
       [400, 413, 415, 422].includes(error.status)
     ) {
-      await new DistributedAbuseProtection().registerInvalid(identityHash).catch(() => undefined);
+      await new DistributedAbuseProtection(undefined, event.id).registerInvalid(identityHash).catch(() => undefined);
     }
     return errorResponse(error, requestId);
   } finally {
@@ -259,4 +270,8 @@ export async function POST(request: Request): Promise<Response> {
     for (const release of releases.reverse()) await release().catch(() => undefined);
     await permit?.release().catch(() => undefined);
   }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  return handleEventPersonalize(request, DEFAULT_EVENT_RECORD);
 }

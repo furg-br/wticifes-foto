@@ -1,8 +1,6 @@
-import { getPublicAppUrl } from "@/lib/env";
-import { MasonryShowcase } from "./masonry-showcase";
+import { redirect } from "next/navigation";
+import { DEFAULT_EVENT_SLUG } from "@/db/schema";
 
-export const dynamic = "force-dynamic";
-
-export default function ShowcasePage() {
-  return <MasonryShowcase appUrl={getPublicAppUrl() ?? "/"} />;
+export default function ShowcaseRedirect() {
+  redirect(`/${DEFAULT_EVENT_SLUG}/vitrine`);
 }

@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GitHub from "next-auth/providers/github";
 import { getAdminAllowlist, isAdminAuthConfigured } from "@/lib/env";
+import { ensureAdminUser, isAdminEmailEligible } from "@/lib/event-repository";
 
 const configured = isAdminAuthConfigured();
 
@@ -17,9 +18,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       ]
     : [],
   callbacks: {
-    signIn({ user }) {
+    async signIn({ user }) {
       const email = user.email?.trim().toLowerCase();
-      return Boolean(configured && email && getAdminAllowlist().has(email));
+      if (!configured || !email) return false;
+      const isBootstrapSuperAdmin = getAdminAllowlist().has(email);
+      try {
+        if (!isBootstrapSuperAdmin && !(await isAdminEmailEligible(email))) return false;
+        await ensureAdminUser(email, user.name, isBootstrapSuperAdmin);
+        return true;
+      } catch {
+        return false;
+      }
     },
   },
 });

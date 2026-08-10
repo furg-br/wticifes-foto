@@ -10,18 +10,26 @@ export function generateOpaqueToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export function deriveBoundToken(imageId: string, purpose: "consent" | "revocation"): string {
+export function deriveBoundToken(
+  imageId: string,
+  purpose: "consent" | "revocation",
+  eventId?: string,
+): string {
   return createHmac("sha256", getRateLimitSecret())
-    .update(`wticifes:${purpose}:v1:${imageId}`, "utf8")
+    .update(`wticifes:${purpose}:${eventId ? "v2" : "v1"}:${eventId ? `${eventId}:` : ""}${imageId}`, "utf8")
     .digest("base64url");
 }
 
-export function participantKeyHash(token: string): string {
-  return createHmac("sha256", getRateLimitSecret()).update(token, "utf8").digest("hex");
+export function participantKeyHash(token: string, eventId?: string): string {
+  return createHmac("sha256", getRateLimitSecret())
+    .update(`${eventId ? `event:${eventId}:` : ""}${token}`, "utf8")
+    .digest("hex");
 }
 
-export function requestKeyHash(value: string): string {
-  return createHmac("sha256", getRateLimitSecret()).update(`request:${value}`, "utf8").digest("hex");
+export function requestKeyHash(value: string, eventId?: string): string {
+  return createHmac("sha256", getRateLimitSecret())
+    .update(`request:${eventId ? `${eventId}:` : ""}${value}`, "utf8")
+    .digest("hex");
 }
 
 export function moderatorIdentifier(email: string): string {
@@ -42,6 +50,7 @@ export type DownloadAudience = "result" | "public" | "moderation";
 
 export interface DownloadGrant {
   imageId: string;
+  eventId?: string;
   tokenVersion: number;
   audience: DownloadAudience;
   expiresAtEpoch: number;
@@ -58,6 +67,7 @@ function grantSignature(encoded: string): string {
 export function createImageGrant(grant: Omit<DownloadGrant, "expiresAtEpoch"> & { expiresAt: Date }): string {
   const payload = {
     i: grant.imageId,
+    ...(grant.eventId ? { t: grant.eventId } : {}),
     v: grant.tokenVersion,
     a: grant.audience,
     e: Math.floor(grant.expiresAt.getTime() / 1000),
@@ -94,6 +104,7 @@ export function verifyImageGrant(token: string, now = new Date()): DownloadGrant
     !("e" in parsed) ||
     typeof parsed.i !== "string" ||
     !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(parsed.i) ||
+    ("t" in parsed && (typeof parsed.t !== "string" || !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(parsed.t))) ||
     typeof parsed.v !== "number" ||
     !Number.isSafeInteger(parsed.v) ||
     parsed.v < 1 ||
@@ -106,8 +117,10 @@ export function verifyImageGrant(token: string, now = new Date()): DownloadGrant
   if (parsed.e <= Math.floor(now.getTime() / 1000)) {
     throw new AppError("DOWNLOAD_EXPIRED", 410, "Este link de download expirou.");
   }
+  const eventId = "t" in parsed && typeof parsed.t === "string" ? parsed.t : undefined;
   return {
     imageId: parsed.i,
+    ...(eventId ? { eventId } : {}),
     tokenVersion: parsed.v,
     audience: parsed.a as DownloadAudience,
     expiresAtEpoch: parsed.e,

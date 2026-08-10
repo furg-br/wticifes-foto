@@ -7,9 +7,10 @@ interface Props {
   csrfToken: string;
   status: string;
   canBlock: boolean;
+  slug?: string;
 }
 
-export function ModerationControls({ imageId, csrfToken, status, canBlock }: Props) {
+export function ModerationControls({ imageId, csrfToken, status, canBlock, slug }: Props) {
   const [reason, setReason] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,7 +21,7 @@ export function ModerationControls({ imageId, csrfToken, status, canBlock }: Pro
     setBusy(true);
     setMessage("");
     try {
-      const response = await fetch("/api/admin/moderacao", {
+      const response = await fetch(slug ? `/api/admin/${slug}/moderacao` : "/api/admin/moderacao", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image_id: imageId, action, reason: reason || undefined, csrf_token: csrfToken }),

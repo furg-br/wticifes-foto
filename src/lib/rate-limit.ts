@@ -68,7 +68,14 @@ export interface GenerationPermit {
 }
 
 export class DistributedAbuseProtection {
-  constructor(private readonly redis: Redis = getRedis()) {}
+  constructor(
+    private readonly redis: Redis = getRedis(),
+    private readonly scope = "global",
+  ) {}
+
+  private key(kind: string, value?: string): string {
+    return `wticifes:${kind}:${this.scope}${value ? `:${value}` : ""}`;
+  }
 
   async assertNotBlocked(identityHash: string): Promise<void> {
     if (await this.redis.exists(`wticifes:blocked:${identityHash}`)) {
@@ -92,7 +99,7 @@ export class DistributedAbuseProtection {
         headers: { "Retry-After": String(retryAfter(result)) },
       });
     }
-    const reserved = await this.redis.set(`wticifes:upload:${requestHash}`, pathname, {
+    const reserved = await this.redis.set(this.key("upload", requestHash), pathname, {
       nx: true,
       ex: 15 * 60,
     });
@@ -102,7 +109,7 @@ export class DistributedAbuseProtection {
   }
 
   async assertFeedAllowed(identityHash: string): Promise<void> {
-    const result = await limiter(this.redis, 120, "1 m", "showcase:feed").limit(identityHash);
+    const result = await limiter(this.redis, 120, "1 m", `showcase:feed:${this.scope}`).limit(identityHash);
     if (!result.success) {
       throw new AppError("FEED_RATE_LIMITED", 429, "Muitas atualizações da vitrine.", {
         headers: { "Retry-After": String(retryAfter(result)) },
@@ -111,14 +118,14 @@ export class DistributedAbuseProtection {
   }
 
   async assertUploadReservation(requestHash: string, pathname: string): Promise<void> {
-    const reserved = await this.redis.get<string>(`wticifes:upload:${requestHash}`);
+    const reserved = await this.redis.get<string>(this.key("upload", requestHash));
     if (reserved !== pathname) {
       throw new AppError("UPLOAD_NOT_AUTHORIZED", 403, "O upload não está autorizado ou expirou.");
     }
   }
 
   async clearUploadReservation(requestHash: string): Promise<void> {
-    await this.redis.del(`wticifes:upload:${requestHash}`);
+    await this.redis.del(this.key("upload", requestHash));
   }
 
   async enter(identityHash: string, participantHash?: string): Promise<GenerationPermit> {
@@ -132,8 +139,8 @@ export class DistributedAbuseProtection {
     ];
     if (participantHash) {
       checks.push(
-        limiter(this.redis, limits.participantPerHour, "1 h", "participant:hour").limit(participantHash),
-        limiter(this.redis, limits.participantPerDay, "1 d", "participant:day").limit(participantHash),
+        limiter(this.redis, limits.participantPerHour, "1 h", `participant:hour:${this.scope}`).limit(participantHash),
+        limiter(this.redis, limits.participantPerDay, "1 d", `participant:day:${this.scope}`).limit(participantHash),
       );
     }
     const results = await Promise.all(checks);
@@ -194,7 +201,7 @@ export class DistributedAbuseProtection {
   }
 
   async acquireLock(kind: "request" | "content" | "file" | "participant", hash: string): Promise<() => Promise<void>> {
-    const key = `wticifes:lock:${kind}:${hash}`;
+    const key = this.key(`lock:${kind}`, hash);
     const acquired = await this.redis.set(key, "1", { nx: true, ex: 120 });
     if (acquired !== "OK") {
       throw new AppError("DUPLICATE_IN_PROGRESS", 409, "Esta fotografia já está sendo processada.", {
@@ -207,23 +214,23 @@ export class DistributedAbuseProtection {
   }
 
   async rememberDuplicate(contentHash: string, imageId: string): Promise<void> {
-    await this.redis.set(`wticifes:content:${contentHash}`, imageId, {
+    await this.redis.set(this.key("content", contentHash), imageId, {
       ex: getRateLimits().duplicateWindowSeconds,
     });
   }
 
   async rememberIdempotency(requestHash: string, imageId: string): Promise<void> {
-    await this.redis.set(`wticifes:idempotency:${requestHash}`, imageId, {
+    await this.redis.set(this.key("idempotency", requestHash), imageId, {
       ex: getRateLimits().duplicateWindowSeconds,
     });
   }
 
   async idempotentImageId(requestHash: string): Promise<string | null> {
-    return this.redis.get<string>(`wticifes:idempotency:${requestHash}`);
+    return this.redis.get<string>(this.key("idempotency", requestHash));
   }
 
   async duplicateImageId(contentHash: string): Promise<string | null> {
-    return this.redis.get<string>(`wticifes:content:${contentHash}`);
+    return this.redis.get<string>(this.key("content", contentHash));
   }
 
   async registerInvalid(identityHash: string): Promise<void> {

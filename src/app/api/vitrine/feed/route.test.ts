@@ -38,7 +38,7 @@ describe("GET /api/vitrine/feed", () => {
     expect(response.status).toBe(200);
     expect(Object.keys(body.images[0] ?? {}).sort()).toEqual(["expires_at", "url"]);
     expect(JSON.stringify(body)).not.toMatch(/blobPath|personalizadas|participant|contentHash|image_id/);
-    expect(mocks.mark).toHaveBeenCalledWith(["019fc3b2-061d-7ea0-b4de-4738900bd89f"]);
+    expect(mocks.mark).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001", ["019fc3b2-061d-7ea0-b4de-4738900bd89f"]);
     expect(response.headers.get("cache-control")).toContain("no-store");
   });
 });

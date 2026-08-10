@@ -21,7 +21,7 @@ describe("GET /api/qrcode", () => {
     expect([...bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     expect(bytes.byteLength).toBeGreaterThan(1000);
     expect(generator).toHaveBeenCalledWith(
-      "https://foto.example.org",
+      "https://foto.example.org/wticifes-2026",
       expect.objectContaining({ errorCorrectionLevel: "H", width: 512 }),
     );
   });

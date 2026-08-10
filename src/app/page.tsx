@@ -1,31 +1,6 @@
-import Image from "next/image";
-import Link from "next/link";
-import { PhotoPersonalizer } from "./photo-personalizer";
-import { UsageStatistics } from "./usage-statistics";
+import { redirect } from "next/navigation";
+import { DEFAULT_EVENT_SLUG } from "@/db/schema";
 
 export default function Home() {
-  return (
-    <main>
-      <section className="hero" aria-labelledby="titulo">
-        <Image
-          className="logo"
-          src="/wticifes2026-logo.png"
-          width={1536}
-          height={469}
-          priority
-          alt="WTICIFES Rio Grande do Sul 2026"
-        />
-        <h1 id="titulo">
-          <span>Eu</span> <strong>fui,</strong> <em>tchê!</em>
-        </h1>
-        <PhotoPersonalizer />
-        <UsageStatistics />
-        <nav aria-label="Informações legais">
-          <Link href="/vitrine">Vitrine pública</Link>
-          <Link href="/privacidade">Privacidade</Link>
-          <Link href="/termos">Termos de uso</Link>
-        </nav>
-      </section>
-    </main>
-  );
+  redirect(`/${DEFAULT_EVENT_SLUG}`);
 }

@@ -15,6 +15,20 @@
       "when": 1785699478113,
       "tag": "0001_modern_rocket_racer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786326499219,
+      "tag": "0002_absurd_bucky",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786327704253,
+      "tag": "0003_clear_red_hulk",
+      "breakpoints": true
     }
   ]
 }

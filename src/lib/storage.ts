@@ -3,6 +3,7 @@ import { del, get, list, put } from "@vercel/blob";
 import { AppError } from "./app-error";
 import { OUTPUT } from "./constants";
 import { getBlobTtlHours } from "./env";
+import { DEFAULT_EVENT_ID } from "@/db/schema";
 
 export interface StoredImage {
   pathname: string;
@@ -30,9 +31,13 @@ function logBlobFailure(operation: string, error: unknown): void {
   }));
 }
 
-export async function storePersonalizedImage(data: Buffer, now = new Date()): Promise<StoredImage> {
+export async function storePersonalizedImage(
+  data: Buffer,
+  now = new Date(),
+  eventId = DEFAULT_EVENT_ID,
+): Promise<StoredImage> {
   const day = now.toISOString().slice(0, 10);
-  const pathname = `${OUTPUT.blobPrefix}${day}/${randomUUID()}.jpg`;
+  const pathname = `${OUTPUT.blobPrefix}${eventId}/${day}/${randomUUID()}.jpg`;
   // Sharp may return a Buffer backed by SharedArrayBuffer in a Vercel function.
   // Undici rejects shared memory as a fetch body, so copy it to a regular ArrayBuffer first.
   const uploadData = Buffer.from(data);
@@ -93,7 +98,7 @@ async function streamToLimitedBuffer(stream: ReadableStream, limit: number): Pro
 }
 
 export async function readTransientUpload(pathname: string): Promise<Buffer> {
-  if (!/^incoming\/[0-9a-f-]{36}\.(?:jpg|jpeg|png|webp)$/i.test(pathname)) {
+  if (!/^incoming\/[a-z0-9-]{1,63}\/[0-9a-f-]{36}\.(?:jpg|jpeg|png|webp)$/i.test(pathname)) {
     throw new AppError("UPLOAD_NOT_AUTHORIZED", 403, "O upload não está autorizado.");
   }
   const result = await get(pathname, { access: "private", useCache: false });
@@ -105,6 +110,33 @@ export async function readTransientUpload(pathname: string): Promise<Buffer> {
     throw new AppError("IMAGE_TOO_LARGE", 413, "A fotografia excede o limite de 12 MB.");
   }
   return streamToLimitedBuffer(result.stream, INPUT_LIMITS.downloadBytes);
+}
+
+export async function storeEventAsset(
+  eventId: string,
+  kind: "logo" | "side",
+  data: Buffer,
+): Promise<string> {
+  const pathname = `event-assets/${eventId}/${kind}/${randomUUID()}.png`;
+  const blob = await put(pathname, Buffer.from(data), {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: false,
+    contentType: "image/png",
+    cacheControlMaxAge: 3600,
+  });
+  return blob.pathname;
+}
+
+export async function readEventAsset(pathname: string): Promise<Buffer> {
+  if (!/^event-assets\/[0-9a-f-]{36}\/(?:logo|side)\/[0-9a-f-]{36}\.png$/i.test(pathname)) {
+    throw new AppError("ASSET_NOT_FOUND", 404, "Ativo visual não encontrado.");
+  }
+  const result = await get(pathname, { access: "private", useCache: true });
+  if (!result || result.statusCode !== 200) {
+    throw new AppError("ASSET_NOT_FOUND", 404, "Ativo visual não encontrado.");
+  }
+  return streamToLimitedBuffer(result.stream, 4 * 1024 * 1024);
 }
 
 export async function deletePersonalizedImage(pathname: string): Promise<void> {

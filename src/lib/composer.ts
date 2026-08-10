@@ -32,6 +32,11 @@ export interface PersonalizedImage {
   layout: CompositionLayout["mode"];
 }
 
+export interface PersonalizationBranding {
+  logo: Buffer;
+  sideImage: Buffer;
+}
+
 let logoPromise: Promise<Buffer> | undefined;
 let phrasePromise: Promise<Buffer> | undefined;
 
@@ -191,8 +196,8 @@ async function normalizePhoto(data: Buffer, mimeType: string) {
   }
 }
 
-async function renderLogo(box: Box): Promise<{ data: Buffer; width: number; height: number }> {
-  const logo = await loadOfficialLogo();
+async function renderLogo(box: Box, source?: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+  const logo = source ?? await loadOfficialLogo();
   const rendered = await sharp(logo)
     .resize({
       width: box.width,
@@ -206,8 +211,8 @@ async function renderLogo(box: Box): Promise<{ data: Buffer; width: number; heig
   return { data: rendered.data, width: rendered.info.width, height: rendered.info.height };
 }
 
-async function renderPhrase(box: Box): Promise<{ data: Buffer; width: number; height: number }> {
-  const phrase = await loadApprovedPhrase();
+async function renderPhrase(box: Box, source?: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+  const phrase = source ?? await loadApprovedPhrase();
   const rendered = await sharp(phrase)
     .trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 8 })
     .resize({
@@ -238,17 +243,21 @@ function renderTranslucentBackdrop(box: Box): Buffer {
   );
 }
 
-export async function personalizePhoto(data: Buffer, mimeType: string): Promise<PersonalizedImage> {
+export async function personalizePhoto(
+  data: Buffer,
+  mimeType: string,
+  branding?: PersonalizationBranding,
+): Promise<PersonalizedImage> {
   const photo = await normalizePhoto(data, mimeType);
   const photoWidth = photo.info.width;
   const photoHeight = photo.info.height;
   const layout = calculateLayout(photoWidth, photoHeight);
   const [logo, phrase] = await Promise.all([
-    renderLogo(layout.logo).catch((cause: unknown) => {
+    renderLogo(layout.logo, branding?.logo).catch((cause: unknown) => {
       if (cause instanceof AppError) throw cause;
       throw new AppError("LOGO_RENDER_FAILED", 500, "Não foi possível renderizar o logo.", { cause });
     }),
-    renderPhrase(layout.phrase).catch((cause: unknown) => {
+    renderPhrase(layout.phrase, branding?.sideImage).catch((cause: unknown) => {
       if (cause instanceof AppError) throw cause;
       throw new AppError("PHRASE_RENDER_FAILED", 500, "Não foi possível renderizar a frase.", { cause });
     }),
